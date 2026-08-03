@@ -8,16 +8,14 @@ It is intentionally separate from the admin portal codebase so public branding/s
 ## What Is Already Implemented
 - One-page teaser at `index.html`
 - Orbit Nickel Minimal mark at `logo.svg`
-- Small clickable rose image (`rose.png`) on the teaser page
-- Secondary sunrise-only page at `sunrise.html` using `sunrise.png`
+- Secondary sunrise-only page at `sunrise.html` using `sunrise.png`, also served at `/tree`
 - Vercel static config at `vercel.json`
 - Base project README
 - Copilot context copied to `.github/copilot-instructions.md`
 
 ## Current Navigation Behavior
 - Main page: `index.html`
-- Rose click target: `sunrise.html`
-- Sunrise page intentionally contains only the image, no text
+- Sunrise page intentionally contains only the image, no text, reachable via `/tree`
 
 ## Local Test Notes
 Recommended local serve command from this repo root:
@@ -27,6 +25,7 @@ Recommended local serve command from this repo root:
 Expected local URLs:
 - `http://localhost:4173/`
 - `http://localhost:4173/sunrise.html`
+- `http://localhost:4173/tree` (rewrites to `sunrise.html` on Vercel)
 
 ## Deployment Plan (Vercel)
 1. Import this repository into Vercel.

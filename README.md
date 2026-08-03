@@ -5,8 +5,7 @@ Public teaser site for 5cents-intelligence.com.
 ## Contents
 - index.html: primary teaser page
 - logo.svg: Orbit Nickel Minimal mark
-- rose.png: small clickable image on teaser page
-- sunrise.html: secondary sunrise-only page
+- sunrise.html: secondary sunrise-only page (also served at /tree)
 - sunrise.png: sunrise image asset
 - vercel.json: static site rewrite configuration
 

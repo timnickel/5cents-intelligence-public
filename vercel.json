@@ -1,6 +1,7 @@
 {
   "cleanUrls": true,
   "rewrites": [
+    { "source": "/tree", "destination": "/sunrise.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
