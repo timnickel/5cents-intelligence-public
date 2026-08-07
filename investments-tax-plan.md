@@ -3,7 +3,7 @@
 **Scope:** Personal investment tracking and tax-liability estimates for tax year 2026 (filed in 2027).
 **Jurisdiction:** US federal + Illinois state.
 **Accounts covered:** Taxable brokerage, retirement accounts (401(k)/IRA/Roth), crypto.
-**Audience/delivery:** Content for the passcode-gated `/investments` page (`5cents-intelligence-site/investments.html`, served via `5cents-intelligence-site/api/investments-content.js`). See `copilot-chats/2026-08-07-investments-passcode-page.md` for how that page is gated.
+**Audience/delivery:** Content for the passcode-gated `/investments` page (`investments.html`, served via `api/investments-content.js`, both in this repo). See `copilot-chats/2026-08-07-investments-phase1d-content-build.md` for how the gate and Phase 1d mock were built.
 
 > **Not tax advice.** This is a personal planning tool, not a substitute for a CPA or tax software. All bracket/threshold/limit figures below are marked either from memory (⚠️ verify) or as placeholders (TBD) — every number must be checked against the actual IRS Revenue Procedure for 2026 and the Illinois Department of Revenue before it's used to make a real decision.
 
@@ -80,12 +80,12 @@ Validated with `scripts/validate_palette.js` against the flattened panel surface
 
 ### Phase 1c — Content architecture (schema, not copy yet)
 
-- [ ] Decide whether the current flat `{ title, body }` sections array in `investments-content.js` is enough, or whether it needs to grow (e.g. `{ type: "stat-grid", items: [...] }`, `{ type: "text", ... }`) to support tiles/tabs instead of just headings and paragraphs.
-- [ ] Map Phase 1a's placeholder numbers to the stat tiles/sections designed in 1b, so the mock in 1d has real-looking (if fake) values to render.
+- [x] Decide whether the current flat `{ title, body }` sections array in `investments-content.js` is enough, or whether it needs to grow (e.g. `{ type: "stat-grid", items: [...] }`, `{ type: "text", ... }`) to support tiles/tabs instead of just headings and paragraphs. — Grew into `tabs: [{ id, label, blocks: [...] }]` with typed blocks (`stat-grid`, `breakdown-bar`, `text`); legacy flat `sections` kept as a fallback.
+- [x] Map Phase 1a's placeholder numbers to the stat tiles/sections designed in 1b, so the mock in 1d has real-looking (if fake) values to render.
 
 ### Phase 1d — Static look-and-feel mock
 
-- [ ] Build a static pass of `investments.html`'s post-unlock `#content` area using the Phase 1b design system and Phase 1a placeholder numbers, hardcoded (not yet wired through the real API response).
+- [x] Build a static pass of `investments.html`'s post-unlock `#content` area using the Phase 1b design system and Phase 1a placeholder numbers, hardcoded (not yet wired through the real API response). — Shipped in `d93d6cd`.
 - [ ] Review/iterate on layout, spacing, responsiveness before touching Phase 2's actual tax math.
 
 ### Phase 1e — Real data inventory (deferred until look/feel is approved)
@@ -151,9 +151,8 @@ Goal: turn Phases 2–3 into something decision-useful, not just a liability num
 
 Only after Phases 1–4 produce trustworthy numbers:
 
-- [ ] Replace the placeholder `sections` array in `5cents-intelligence-site/api/investments-content.js` with real section content (Overview, Federal Summary, Illinois Summary, Scenarios, Action Items).
+- [ ] Replace the placeholder `tabs`/`blocks` content in `api/investments-content.js` with real section content (Overview, Federal Summary, Illinois Summary, Scenarios, Action Items).
 - [ ] Decide whether raw numbers/holdings should live in that file directly, or be fetched from a separate private data source — given the passcode-gate exists specifically to protect this content, keep sensitive figures out of anything that could leak into the public static site or git history unencrypted.
-- [ ] Update `CHANGELOG.md` and the `U-06` row in `game-requirements.md` once real content ships, per this repo's tracking conventions.
 
 ---
 
