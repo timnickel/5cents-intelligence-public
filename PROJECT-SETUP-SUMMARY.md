@@ -9,6 +9,7 @@ It is intentionally separate from the admin portal codebase so public branding/s
 - One-page teaser at `index.html`
 - Orbit Nickel Minimal mark at `logo.svg`
 - Secondary sunrise-only page at `sunrise.html` using `sunrise.png`, also served at `/tree`
+- Private passcode-gated page at `investments.html`, served at `/investments`, backed by two serverless functions (`api/investments-auth.js`, `api/investments-content.js`) that verify a passcode server-side and gate content behind a signed session cookie. Requires `INVESTMENTS_PASSCODE` and `INVESTMENTS_SESSION_SECRET` environment variables set on the Vercel project — see `.env.example`.
 - Vercel static config at `vercel.json`
 - Base project README
 - Copilot context copied to `.github/copilot-instructions.md`

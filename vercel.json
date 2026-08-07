@@ -2,6 +2,13 @@
   "cleanUrls": true,
   "rewrites": [
     { "source": "/tree", "destination": "/sunrise.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/investments", "destination": "/investments.html" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/investments",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    }
   ]
 }
