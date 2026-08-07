@@ -1,11 +1,71 @@
 const crypto = require("crypto");
 
-// Placeholder content served only after a valid session cookie is presented.
+// Placeholder content (Phase 1a figures) served only after a valid session cookie is presented.
+// All dollar figures below are made-up placeholders for layout purposes — see investments-tax-plan.md.
 const CONTENT = {
-  sections: [
+  stamp: "Estimate — not filed · tax year 2026",
+  tabs: [
     {
-      title: "Overview",
-      body: "Investment planning notes go here. Replace this placeholder content once the real plan is ready.",
+      id: "overview",
+      label: "Overview",
+      blocks: [
+        {
+          type: "stat-grid",
+          items: [
+            { label: "Est. federal liability", value: "$28,400" },
+            { label: "Est. Illinois liability", value: "$8,100" },
+            { label: "Effective rate (combined)", value: "19.8%" },
+            { label: "Marginal rate", value: "24% fed / 4.95% IL" },
+          ],
+        },
+        {
+          type: "breakdown-bar",
+          title: "Where the gross goes",
+          segments: [
+            { label: "Federal", value: "$28,400", share: "17.7%", token: "federal" },
+            { label: "Illinois", value: "$8,100", share: "5.1%", token: "illinois" },
+            { label: "Take-home", value: "$123,500", share: "77.2%", token: "takehome" },
+          ],
+        },
+        {
+          type: "text",
+          title: "Overview",
+          body: "Rough estimate based on placeholder inputs: $145,000 non-investment AGI, $9,400 realized brokerage gains, $2,110 dividends, and $3,200 crypto gains. Not tax advice — see investments-tax-plan.md for scope and caveats.",
+        },
+      ],
+    },
+    {
+      id: "federal",
+      label: "Federal",
+      blocks: [
+        {
+          type: "text",
+          title: "Federal summary",
+          body: "Placeholder only. Real calculation pending Phase 2: ordinary-income brackets, long-term capital gains/qualified dividend rates, NIIT, and retirement-contribution treatment against verified 2026 IRS figures.",
+        },
+      ],
+    },
+    {
+      id: "illinois",
+      label: "Illinois",
+      blocks: [
+        {
+          type: "text",
+          title: "Illinois summary",
+          body: "Placeholder only. Real calculation pending Phase 3: Illinois's flat rate applied to ordinary income and capital gains alike (no preferential rate), with retirement distributions excluded.",
+        },
+      ],
+    },
+    {
+      id: "scenarios",
+      label: "Scenarios",
+      blocks: [
+        {
+          type: "text",
+          title: "Scenarios",
+          body: "Placeholder only. Real what-if scenarios (Roth conversion, loss harvesting, withdrawal timing) land in Phase 4 once Phases 2–3 produce trustworthy liability numbers.",
+        },
+      ],
     },
   ],
 };

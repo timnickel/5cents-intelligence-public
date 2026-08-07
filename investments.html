@@ -16,6 +16,13 @@
         --cyan: #7dd3fc;
         --green: #34d399;
         --red: #f87171;
+
+        /* Chart-fill tokens: darker steps of the cyan/green families for dark-surface contrast (see investments-tax-plan.md Phase 1b) */
+        --chart-surface: #0b1221;
+        --chart-federal: #0284c7;
+        --chart-illinois: #d97706;
+        --chart-takehome: #059669;
+        --status-warning-text: #fbbf24;
       }
 
       * {
@@ -40,6 +47,10 @@
         display: grid;
         place-items: center;
         padding: 32px 0;
+      }
+
+      main.unlocked {
+        width: min(880px, calc(100% - 32px));
       }
 
       .hero {
@@ -122,6 +133,160 @@
         line-height: 1.7;
         margin: 0 0 12px;
       }
+
+      .stamp {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        border: 1px solid rgba(125, 211, 252, 0.16);
+        border-radius: 9999px;
+        background: rgba(15, 23, 42, 0.6);
+        padding: 10px 16px;
+        color: #dbeafe;
+        font-size: 0.9rem;
+        margin: 0 0 22px;
+      }
+
+      .stamp-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 9999px;
+        background: linear-gradient(180deg, var(--cyan), var(--green));
+        box-shadow: 0 0 0 6px rgba(125, 211, 252, 0.08);
+      }
+
+      .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 24px;
+      }
+
+      .tab {
+        border: 1px solid rgba(125, 211, 252, 0.16);
+        border-radius: 9999px;
+        background: rgba(15, 23, 42, 0.6);
+        color: var(--muted);
+        padding: 8px 16px;
+        font-size: 0.88rem;
+        cursor: pointer;
+      }
+
+      .tab.active {
+        color: #06101d;
+        background: linear-gradient(180deg, var(--cyan), var(--green));
+        border-color: transparent;
+        font-weight: 700;
+      }
+
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin: 0 0 24px;
+      }
+
+      .stat-tile {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: linear-gradient(180deg, rgba(10, 18, 32, 0.9), rgba(8, 16, 29, 0.76));
+        padding: 16px 18px;
+      }
+
+      .stat-tile .stat-label {
+        color: var(--muted);
+        font-size: 0.82rem;
+        margin: 0 0 6px;
+      }
+
+      .stat-tile .stat-value {
+        font-size: 1.4rem;
+        font-weight: 600;
+        font-variant-numeric: proportional-nums;
+      }
+
+      .breakdown {
+        margin: 0 0 24px;
+      }
+
+      .breakdown-title {
+        font-size: 0.95rem;
+        color: #cbd5e1;
+        margin: 0 0 12px;
+      }
+
+      .breakdown-bar {
+        display: flex;
+        gap: 2px;
+        height: 24px;
+        border-radius: 9999px;
+        overflow: hidden;
+        background: var(--chart-surface);
+      }
+
+      .breakdown-segment {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #06101d;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+
+      .breakdown-segment[data-token="federal"] {
+        background: var(--chart-federal);
+      }
+
+      .breakdown-segment[data-token="illinois"] {
+        background: var(--chart-illinois);
+      }
+
+      .breakdown-segment[data-token="takehome"] {
+        background: var(--chart-takehome);
+      }
+
+      .breakdown-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-top: 10px;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      .breakdown-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .breakdown-legend-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 9999px;
+      }
+
+      .breakdown-legend-dot[data-token="federal"] {
+        background: var(--chart-federal);
+      }
+
+      .breakdown-legend-dot[data-token="illinois"] {
+        background: var(--chart-illinois);
+      }
+
+      .breakdown-legend-dot[data-token="takehome"] {
+        background: var(--chart-takehome);
+      }
+
+      .tab-panel {
+        display: none;
+      }
+
+      .tab-panel.active {
+        display: block;
+      }
     </style>
   </head>
   <body>
@@ -149,24 +314,137 @@
     </main>
     <script>
       (function () {
+        var main = document.querySelector("main");
         var gate = document.getElementById("gate");
         var content = document.getElementById("content");
         var form = document.getElementById("passcode-form");
         var input = document.getElementById("passcode-input");
         var errorEl = document.getElementById("gate-error");
 
+        function renderBlock(block) {
+          if (block.type === "stat-grid") {
+            var grid = document.createElement("div");
+            grid.className = "stat-grid";
+            (block.items || []).forEach(function (item) {
+              var tile = document.createElement("div");
+              tile.className = "stat-tile";
+              var label = document.createElement("p");
+              label.className = "stat-label";
+              label.textContent = item.label;
+              var value = document.createElement("p");
+              value.className = "stat-value";
+              value.textContent = item.value;
+              tile.appendChild(label);
+              tile.appendChild(value);
+              grid.appendChild(tile);
+            });
+            return grid;
+          }
+
+          if (block.type === "breakdown-bar") {
+            var wrap = document.createElement("div");
+            wrap.className = "breakdown";
+            var title = document.createElement("p");
+            title.className = "breakdown-title";
+            title.textContent = block.title;
+            var bar = document.createElement("div");
+            bar.className = "breakdown-bar";
+            var legend = document.createElement("div");
+            legend.className = "breakdown-legend";
+            (block.segments || []).forEach(function (segment) {
+              var seg = document.createElement("div");
+              seg.className = "breakdown-segment";
+              seg.dataset.token = segment.token;
+              seg.style.flex = "0 0 " + segment.share;
+              seg.textContent = segment.share;
+              bar.appendChild(seg);
+
+              var legendItem = document.createElement("span");
+              legendItem.className = "breakdown-legend-item";
+              var dot = document.createElement("span");
+              dot.className = "breakdown-legend-dot";
+              dot.dataset.token = segment.token;
+              legendItem.appendChild(dot);
+              legendItem.appendChild(
+                document.createTextNode(segment.label + " " + segment.value + " (" + segment.share + ")")
+              );
+              legend.appendChild(legendItem);
+            });
+            wrap.appendChild(title);
+            wrap.appendChild(bar);
+            wrap.appendChild(legend);
+            return wrap;
+          }
+
+          var textWrap = document.createDocumentFragment();
+          var h2 = document.createElement("h2");
+          h2.textContent = block.title;
+          var p = document.createElement("p");
+          p.textContent = block.body;
+          textWrap.appendChild(h2);
+          textWrap.appendChild(p);
+          return textWrap;
+        }
+
         function renderContent(data) {
           content.innerHTML = "";
-          (data && data.sections ? data.sections : []).forEach(function (section) {
-            var h2 = document.createElement("h2");
-            h2.textContent = section.title;
-            var p = document.createElement("p");
-            p.textContent = section.body;
-            content.appendChild(h2);
-            content.appendChild(p);
-          });
+
+          if (data && data.stamp) {
+            var stamp = document.createElement("div");
+            stamp.className = "stamp";
+            var dot = document.createElement("span");
+            dot.className = "stamp-dot";
+            stamp.appendChild(dot);
+            stamp.appendChild(document.createTextNode(data.stamp));
+            content.appendChild(stamp);
+          }
+
+          var tabs = (data && data.tabs) || [];
+          if (tabs.length) {
+            var tabRow = document.createElement("div");
+            tabRow.className = "tabs";
+            var panels = [];
+
+            tabs.forEach(function (tab, index) {
+              var button = document.createElement("button");
+              button.type = "button";
+              button.className = "tab" + (index === 0 ? " active" : "");
+              button.textContent = tab.label;
+
+              var panel = document.createElement("div");
+              panel.className = "tab-panel" + (index === 0 ? " active" : "");
+              (tab.blocks || []).forEach(function (block) {
+                panel.appendChild(renderBlock(block));
+              });
+              panels.push(panel);
+
+              button.addEventListener("click", function () {
+                tabRow.querySelectorAll(".tab").forEach(function (btn) {
+                  btn.classList.remove("active");
+                });
+                panels.forEach(function (p) {
+                  p.classList.remove("active");
+                });
+                button.classList.add("active");
+                panel.classList.add("active");
+              });
+
+              tabRow.appendChild(button);
+            });
+
+            content.appendChild(tabRow);
+            panels.forEach(function (panel) {
+              content.appendChild(panel);
+            });
+          } else {
+            (data && data.sections ? data.sections : []).forEach(function (section) {
+              content.appendChild(renderBlock({ type: "text", title: section.title, body: section.body }));
+            });
+          }
+
           gate.hidden = true;
           content.hidden = false;
+          main.classList.add("unlocked");
         }
 
         function checkSession() {
