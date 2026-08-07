@@ -1,5 +1,9 @@
 const crypto = require("crypto");
 
+// Bump on every push: yyyy.mm.dd.x.x — date of the push, then a same-day push counter,
+// then a same-day-same-counter revision (increment the last digit for a same-day fix/redeploy).
+const VERSION = "2026.08.07.1.0";
+
 // Placeholder content (Phase 1a figures) served only after a valid session cookie is presented.
 // All dollar figures below are made-up placeholders for layout purposes — see investments-tax-plan.md.
 const CONTENT = {
@@ -112,5 +116,5 @@ module.exports = async (req, res) => {
     return;
   }
 
-  res.status(200).json({ ok: true, content: CONTENT });
+  res.status(200).json({ ok: true, content: CONTENT, version: VERSION });
 };

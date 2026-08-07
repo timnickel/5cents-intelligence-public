@@ -287,6 +287,15 @@
       .tab-panel.active {
         display: block;
       }
+
+      .page-version {
+        margin: 28px 0 0;
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.76rem;
+        letter-spacing: 0.02em;
+      }
     </style>
   </head>
   <body>
@@ -386,7 +395,7 @@
           return textWrap;
         }
 
-        function renderContent(data) {
+        function renderContent(data, version) {
           content.innerHTML = "";
 
           if (data && data.stamp) {
@@ -442,6 +451,13 @@
             });
           }
 
+          if (version) {
+            var footer = document.createElement("p");
+            footer.className = "page-version";
+            footer.textContent = "v" + version;
+            content.appendChild(footer);
+          }
+
           gate.hidden = true;
           content.hidden = false;
           main.classList.add("unlocked");
@@ -454,7 +470,7 @@
               return res.json();
             })
             .then(function (data) {
-              if (data) renderContent(data.content);
+              if (data) renderContent(data.content, data.version);
             })
             .catch(function () {
               /* stay on the passcode gate */
