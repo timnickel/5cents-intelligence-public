@@ -28,6 +28,11 @@ module.exports = async (req, res) => {
     return;
   }
 
+  if (!process.env.ANTHROPIC_API_KEY) {
+    res.status(500).json({ error: "Server misconfigured", details: "ANTHROPIC_API_KEY is not set" });
+    return;
+  }
+
   try {
     const response = await client.messages.create({
       model: "claude-haiku-4-5",
@@ -40,6 +45,11 @@ module.exports = async (req, res) => {
     res.status(200).json({ action });
   } catch (error) {
     console.error("ai-assist-process error:", error);
-    res.status(502).json({ error: "Processing failed" });
+    res.status(502).json({
+      error: "Processing failed",
+      details: error?.message || String(error),
+      status: error?.status,
+      type: error?.type || error?.name,
+    });
   }
 };
