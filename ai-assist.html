@@ -186,22 +186,29 @@
         border: 1px solid var(--line);
       }
 
-      #result {
+      #status {
         margin-top: 20px;
         padding: 14px 16px;
         border-radius: 14px;
         border: 1px solid var(--line);
         background: rgba(6, 12, 22, 0.7);
-        min-height: 1.5rem;
         white-space: pre-wrap;
-      }
-
-      #result.empty {
         color: var(--muted);
       }
 
-      #result.error {
+      #status:empty {
+        display: none;
+        margin: 0;
+        padding: 0;
+        border: none;
+      }
+
+      #status.error {
         color: var(--red);
+      }
+
+      #transcript {
+        margin-top: 20px;
       }
 
       #options {
@@ -241,14 +248,67 @@
         margin-top: 8px;
       }
 
-      #history {
+      #threads {
         margin-top: 28px;
       }
 
-      #history h2 {
+      #threads h2 {
         font-size: 0.95rem;
         margin: 0 0 12px;
         color: #cbd5e1;
+      }
+
+      .thread-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        background: rgba(6, 12, 22, 0.55);
+        margin-bottom: 8px;
+        cursor: pointer;
+      }
+
+      .thread-item:hover {
+        background: rgba(6, 12, 22, 0.8);
+      }
+
+      .thread-item.active {
+        border-color: rgba(125, 211, 252, 0.5);
+        background: rgba(125, 211, 252, 0.08);
+      }
+
+      .thread-info {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .thread-title {
+        font-size: 0.88rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .thread-time {
+        font-size: 0.75rem;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+
+      button.thread-delete {
+        flex: none;
+        padding: 4px 8px;
+        font-size: 0.75rem;
+        background: rgba(248, 113, 113, 0.12);
+        color: var(--red);
+        border: 1px solid rgba(248, 113, 113, 0.3);
+        border-radius: 8px;
+      }
+
+      button.thread-delete:hover {
+        background: rgba(248, 113, 113, 0.22);
       }
 
       .history-item {
@@ -361,15 +421,17 @@
           <textarea id="message" placeholder="Type or paste a message, idea, or note..." autofocus></textarea>
           <div class="row">
             <button id="submit">Process</button>
+            <button id="newChat" class="secondary" title="Start a new thread">+ New</button>
             <button id="settings" class="secondary" title="Change passphrase">&#128273;</button>
           </div>
-          <div id="result" class="empty">Result will appear here.</div>
+          <div id="status"></div>
+          <div id="transcript"></div>
           <div id="options"></div>
-          <div id="history">
-            <h2>History</h2>
-            <div id="historyList"></div>
+          <div id="threads">
+            <h2>Threads</h2>
+            <div id="threadList"></div>
           </div>
-          <p class="page-version">v2026.08.08.3.0</p>
+          <p class="page-version">v2026.08.08.4.0</p>
         </div>
         <div id="debug">
           <div class="debug-header">
@@ -385,19 +447,23 @@
     </main>
     <script>
       var SECRET_KEY = "ai-assist-secret";
-      var HISTORY_KEY = "ai-assist-history";
-      var HISTORY_LIMIT = 50;
+      var THREADS_KEY = "ai-assist-threads";
+      var THREADS_LIMIT = 50;
+      var TITLE_LENGTH = 60;
       var messageEl = document.getElementById("message");
       var submitEl = document.getElementById("submit");
+      var newChatEl = document.getElementById("newChat");
       var settingsEl = document.getElementById("settings");
-      var resultEl = document.getElementById("result");
+      var statusEl = document.getElementById("status");
+      var transcriptEl = document.getElementById("transcript");
       var optionsEl = document.getElementById("options");
-      var historyListEl = document.getElementById("historyList");
+      var threadListEl = document.getElementById("threadList");
       var debugLogEl = document.getElementById("debugLog");
       var clearDebugEl = document.getElementById("clearDebug");
       var copyDebugEl = document.getElementById("copyDebug");
       var debugEntries = [];
       var conversation = [];
+      var currentThreadId = null;
 
       function logDebug(label, data) {
         var entry = "[" + new Date().toLocaleTimeString() + "] " + label;
@@ -423,44 +489,143 @@
         });
       });
 
-      function getHistory() {
-        try {
-          return JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
-        } catch (e) {
-          return [];
-        }
-      }
-
-      function addToHistory(message, action) {
-        var history = getHistory();
-        history.unshift({ message: message, action: action, time: Date.now() });
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, HISTORY_LIMIT)));
-        renderHistory();
-      }
-
       function escapeHtml(str) {
         var div = document.createElement("div");
         div.textContent = str;
         return div.innerHTML;
       }
 
-      function renderHistory() {
-        var history = getHistory();
-        if (history.length === 0) {
-          historyListEl.innerHTML = '<p class="history-empty">No messages yet.</p>';
+      function generateId() {
+        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+        return "t" + Date.now() + Math.random().toString(16).slice(2);
+      }
+
+      function getThreads() {
+        try {
+          return JSON.parse(localStorage.getItem(THREADS_KEY)) || [];
+        } catch (e) {
+          return [];
+        }
+      }
+
+      function saveThreads(threads) {
+        localStorage.setItem(THREADS_KEY, JSON.stringify(threads.slice(0, THREADS_LIMIT)));
+      }
+
+      function makeTitle(text) {
+        var flat = text.trim().replace(/\s+/g, " ");
+        return flat.length > TITLE_LENGTH ? flat.slice(0, TITLE_LENGTH - 1) + "…" : flat;
+      }
+
+      function persistCurrentThread(options) {
+        var threads = getThreads().filter(function (t) {
+          return t.id !== currentThreadId;
+        });
+        threads.unshift({
+          id: currentThreadId,
+          title: makeTitle(conversation[0].content),
+          messages: conversation.slice(),
+          options: options || [],
+          updatedAt: Date.now(),
+        });
+        threads.sort(function (a, b) {
+          return b.updatedAt - a.updatedAt;
+        });
+        saveThreads(threads);
+        renderThreads();
+      }
+
+      function renderThreads() {
+        var threads = getThreads();
+        if (threads.length === 0) {
+          threadListEl.innerHTML = '<p class="history-empty">No saved threads yet.</p>';
           return;
         }
-        historyListEl.innerHTML = history
-          .map(function (entry) {
+        threadListEl.innerHTML = threads
+          .map(function (thread) {
+            var activeClass = thread.id === currentThreadId ? " active" : "";
             return (
-              '<div class="history-item">' +
-              '<div class="history-question">' + escapeHtml(entry.message) + "</div>" +
-              '<div class="history-answer">' + escapeHtml(entry.action) + "</div>" +
-              '<div class="history-time">' + new Date(entry.time).toLocaleString() + "</div>" +
+              '<div class="thread-item' + activeClass + '" data-id="' + thread.id + '">' +
+              '<div class="thread-info">' +
+              '<div class="thread-title">' + escapeHtml(thread.title || "Untitled") + "</div>" +
+              '<div class="thread-time">' + new Date(thread.updatedAt).toLocaleString() + "</div>" +
+              "</div>" +
+              '<button type="button" class="thread-delete" data-id="' + thread.id + '">Delete</button>' +
               "</div>"
             );
           })
           .join("");
+
+        Array.prototype.forEach.call(threadListEl.querySelectorAll(".thread-item"), function (el) {
+          el.addEventListener("click", function () {
+            loadThread(el.getAttribute("data-id"));
+          });
+        });
+        Array.prototype.forEach.call(threadListEl.querySelectorAll(".thread-delete"), function (el) {
+          el.addEventListener("click", function (e) {
+            e.stopPropagation();
+            deleteThread(el.getAttribute("data-id"));
+          });
+        });
+      }
+
+      function deleteThread(id) {
+        saveThreads(
+          getThreads().filter(function (t) {
+            return t.id !== id;
+          })
+        );
+        if (id === currentThreadId) {
+          startNewThread();
+        } else {
+          renderThreads();
+        }
+      }
+
+      function loadThread(id) {
+        var thread = getThreads().filter(function (t) {
+          return t.id === id;
+        })[0];
+        if (!thread) return;
+        currentThreadId = thread.id;
+        conversation = thread.messages.slice();
+        statusEl.className = "";
+        statusEl.textContent = "";
+        renderTranscript();
+        renderOptions(thread.options, function (label) {
+          sendTurn(label);
+        });
+        renderThreads();
+        messageEl.focus();
+      }
+
+      function startNewThread() {
+        currentThreadId = generateId();
+        conversation = [];
+        statusEl.className = "";
+        statusEl.textContent = "";
+        optionsEl.innerHTML = "";
+        renderTranscript();
+        renderThreads();
+        messageEl.focus();
+      }
+
+      function renderTranscript() {
+        if (conversation.length === 0) {
+          transcriptEl.innerHTML = '<p class="history-empty">No messages yet. Type something to start.</p>';
+          return;
+        }
+        var html = "";
+        for (var i = 0; i < conversation.length; i += 2) {
+          var userMsg = conversation[i];
+          var assistantMsg = conversation[i + 1];
+          html +=
+            '<div class="history-item">' +
+            '<div class="history-question">' + escapeHtml(userMsg.content) + "</div>" +
+            (assistantMsg ? '<div class="history-answer">' + escapeHtml(assistantMsg.content) + "</div>" : "") +
+            "</div>";
+        }
+        transcriptEl.innerHTML = html;
       }
 
       function promptForSecret() {
@@ -500,20 +665,21 @@
         });
       }
 
-      function sendTurn(userText, isNewConversation) {
+      function sendTurn(userText) {
         var secret = getSecret();
         if (!secret) return;
 
-        if (isNewConversation) {
-          conversation = [];
+        if (!currentThreadId) {
+          currentThreadId = generateId();
         }
         conversation.push({ role: "user", content: userText });
         optionsEl.innerHTML = "";
+        renderTranscript();
 
         submitEl.disabled = true;
         submitEl.textContent = "Processing...";
-        resultEl.className = "empty";
-        resultEl.textContent = "Thinking...";
+        statusEl.className = "";
+        statusEl.textContent = "Thinking...";
 
         var requestHeaders = {
           "Content-Type": "application/json",
@@ -549,9 +715,10 @@
 
               if (response.status === 401) {
                 localStorage.removeItem(SECRET_KEY);
-                resultEl.className = "error";
-                resultEl.textContent = "Wrong passphrase. Try again.";
+                statusEl.className = "error";
+                statusEl.textContent = "Wrong passphrase. Try again.";
                 conversation.pop();
+                renderTranscript();
                 return null;
               }
               return { ok: response.ok, data: data };
@@ -560,27 +727,30 @@
           .then(function (result) {
             if (!result) return;
             if (!result.ok) {
-              resultEl.className = "error";
-              resultEl.textContent = result.data.details
+              statusEl.className = "error";
+              statusEl.textContent = result.data.details
                 ? result.data.error + ": " + result.data.details
                 : result.data.error || "Something went wrong.";
               conversation.pop();
+              renderTranscript();
               return;
             }
             var action = result.data.action || "(no action returned)";
-            resultEl.className = "";
-            resultEl.textContent = action;
+            statusEl.className = "";
+            statusEl.textContent = "";
             conversation.push({ role: "assistant", content: action });
+            renderTranscript();
             renderOptions(result.data.options, function (label) {
-              sendTurn(label, false);
+              sendTurn(label);
             });
-            addToHistory(userText, action);
+            persistCurrentThread(result.data.options);
           })
           .catch(function (error) {
             logDebug("Error", error && error.message ? error.message : String(error));
-            resultEl.className = "error";
-            resultEl.textContent = "Network error. Try again.";
+            statusEl.className = "error";
+            statusEl.textContent = "Network error. Try again.";
             conversation.pop();
+            renderTranscript();
           })
           .finally(function () {
             submitEl.disabled = false;
@@ -592,17 +762,20 @@
         var message = messageEl.value.trim();
         if (!message) return;
         messageEl.value = "";
-        sendTurn(message, true);
+        sendTurn(message);
       }
 
       submitEl.addEventListener("click", submit);
+      newChatEl.addEventListener("click", startNewThread);
       messageEl.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
           submit();
         }
       });
 
-      renderHistory();
+      currentThreadId = generateId();
+      renderTranscript();
+      renderThreads();
     </script>
   </body>
 </html>
