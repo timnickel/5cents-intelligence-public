@@ -3,11 +3,16 @@
   "rewrites": [
     { "source": "/tree", "destination": "/sunrise.html" },
     { "source": "/investments", "destination": "/investments.html" },
+    { "source": "/ai-assist", "destination": "/ai-assist.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
       "source": "/investments",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/ai-assist",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
   ]
