@@ -3,8 +3,28 @@ const Anthropic = require("@anthropic-ai/sdk");
 const client = new Anthropic();
 
 const SYSTEM_PROMPT =
-  "You turn a rough note, message, or thought into one clear, actionable next step. " +
-  "Respond with a single short sentence stating the next action. No preamble, no explanation, no markdown, no quotes.";
+  "You turn a rough note, message, or thought into one clear, actionable next step, considering the full " +
+  "conversation so far. Respond with ONLY a JSON object, no markdown fences, no prose, in this exact shape: " +
+  '{"action": "one short sentence stating the next action", "options": ["short option", "short option"]}. ' +
+  '"options" must contain 2 or 3 distinct, concise (2-5 word) choices the user could pick to move forward from ' +
+  "the action just given — they become button labels, so keep them short and mutually exclusive.";
+
+const MAX_MESSAGE_LENGTH = 4000;
+const MAX_MESSAGES = 20;
+
+function parseModelResponse(text) {
+  let jsonText = text.trim();
+  const fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenceMatch) {
+    jsonText = fenceMatch[1].trim();
+  }
+  const parsed = JSON.parse(jsonText);
+  const action = typeof parsed.action === "string" ? parsed.action : "";
+  const options = Array.isArray(parsed.options)
+    ? parsed.options.filter((o) => typeof o === "string" && o.trim()).slice(0, 3)
+    : [];
+  return { action, options };
+}
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -18,13 +38,32 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
-  if (!message) {
-    res.status(400).json({ error: "message is required" });
+  const rawMessages = Array.isArray(req.body?.messages) ? req.body.messages : null;
+  if (!rawMessages || rawMessages.length === 0) {
+    res.status(400).json({ error: "messages is required" });
     return;
   }
-  if (message.length > 4000) {
-    res.status(400).json({ error: "message is too long (max 4000 characters)" });
+  if (rawMessages.length > MAX_MESSAGES) {
+    res.status(400).json({ error: "too many messages (max " + MAX_MESSAGES + ")" });
+    return;
+  }
+
+  const messages = [];
+  for (const entry of rawMessages) {
+    const role = entry?.role === "assistant" ? "assistant" : entry?.role === "user" ? "user" : null;
+    const content = typeof entry?.content === "string" ? entry.content.trim() : "";
+    if (!role || !content) {
+      res.status(400).json({ error: "each message needs a valid role and non-empty content" });
+      return;
+    }
+    if (content.length > MAX_MESSAGE_LENGTH) {
+      res.status(400).json({ error: "a message is too long (max " + MAX_MESSAGE_LENGTH + " characters)" });
+      return;
+    }
+    messages.push({ role, content });
+  }
+  if (messages[messages.length - 1].role !== "user") {
+    res.status(400).json({ error: "the last message must be from the user" });
     return;
   }
 
@@ -38,11 +77,19 @@ module.exports = async (req, res) => {
       model: "claude-haiku-4-5",
       max_tokens: 300,
       system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: message }],
+      messages,
     });
 
-    const action = response.content.find((block) => block.type === "text")?.text ?? "";
-    res.status(200).json({ action });
+    const rawText = response.content.find((block) => block.type === "text")?.text ?? "";
+    let action = "";
+    let options = [];
+    try {
+      ({ action, options } = parseModelResponse(rawText));
+    } catch (parseError) {
+      action = rawText.trim();
+      options = [];
+    }
+    res.status(200).json({ action, options });
   } catch (error) {
     console.error("ai-assist-process error:", error);
     res.status(502).json({
