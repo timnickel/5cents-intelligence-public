@@ -616,7 +616,8 @@
           return;
         }
         var html = "";
-        for (var i = 0; i < conversation.length; i += 2) {
+        var startIndex = conversation.length % 2 === 0 ? conversation.length - 2 : conversation.length - 1;
+        for (var i = startIndex; i >= 0; i -= 2) {
           var userMsg = conversation[i];
           var assistantMsg = conversation[i + 1];
           html +=
