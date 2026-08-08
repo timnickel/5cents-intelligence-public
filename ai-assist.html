@@ -34,7 +34,7 @@
       }
 
       main {
-        width: min(560px, calc(100% - 32px));
+        width: min(1040px, calc(100% - 32px));
         margin: 0 auto;
         min-height: 100vh;
         display: grid;
@@ -42,13 +42,31 @@
         padding: 32px 0;
       }
 
+      .layout {
+        width: 100%;
+        display: flex;
+        align-items: flex-start;
+        gap: 24px;
+      }
+
       .hero {
         width: 100%;
+        max-width: 560px;
         border: 1px solid var(--line);
         border-radius: 28px;
         background: linear-gradient(180deg, rgba(10, 18, 32, 0.9), rgba(8, 16, 29, 0.76));
         box-shadow: 0 30px 90px rgba(2, 6, 23, 0.42);
         padding: 34px;
+      }
+
+      @media (max-width: 860px) {
+        .layout {
+          flex-direction: column;
+        }
+
+        .hero {
+          max-width: none;
+        }
       }
 
       .eyebrow {
@@ -243,17 +261,28 @@
       }
 
       #debug {
-        margin-top: 20px;
+        flex: 1 1 360px;
+        max-width: 420px;
+        position: sticky;
+        top: 32px;
         border: 1px solid var(--line);
-        border-radius: 14px;
+        border-radius: 28px;
         background: rgba(6, 12, 22, 0.7);
-        padding: 14px 16px;
+        padding: 20px;
+      }
+
+      @media (max-width: 860px) {
+        #debug {
+          max-width: none;
+          position: static;
+        }
       }
 
       .debug-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 8px;
         margin-bottom: 10px;
       }
 
@@ -261,6 +290,11 @@
         margin: 0;
         font-size: 0.95rem;
         color: #cbd5e1;
+      }
+
+      .debug-actions {
+        display: flex;
+        gap: 8px;
       }
 
       button.small {
@@ -271,7 +305,7 @@
 
       #debugLog {
         margin: 0;
-        max-height: 280px;
+        max-height: 60vh;
         overflow: auto;
         white-space: pre-wrap;
         word-break: break-word;
@@ -283,33 +317,38 @@
   </head>
   <body>
     <main>
-      <div class="hero">
-        <p class="eyebrow">Private</p>
-        <div class="mascot-wrap">
-          <div class="mascot-glow">
-            <img src="/robot.png" alt="AI Assist robot mascot waving" />
+      <div class="layout">
+        <div class="hero">
+          <p class="eyebrow">Private</p>
+          <div class="mascot-wrap">
+            <div class="mascot-glow">
+              <img src="/robot.png" alt="AI Assist robot mascot waving" />
+            </div>
           </div>
+          <h1>AI Assist</h1>
+          <p class="intro">Extracts a single clear next action from whatever you paste in.</p>
+          <textarea id="message" placeholder="Type or paste a message, idea, or note..." autofocus></textarea>
+          <div class="row">
+            <button id="submit">Process</button>
+            <button id="settings" class="secondary" title="Change passphrase">&#128273;</button>
+          </div>
+          <div id="result" class="empty">Result will appear here.</div>
+          <div id="history">
+            <h2>History</h2>
+            <div id="historyList"></div>
+          </div>
+          <p class="page-version">v2026.08.08.2.0</p>
         </div>
-        <h1>AI Assist</h1>
-        <p class="intro">Extracts a single clear next action from whatever you paste in.</p>
-        <textarea id="message" placeholder="Type or paste a message, idea, or note..." autofocus></textarea>
-        <div class="row">
-          <button id="submit">Process</button>
-          <button id="settings" class="secondary" title="Change passphrase">&#128273;</button>
-        </div>
-        <div id="result" class="empty">Result will appear here.</div>
         <div id="debug">
           <div class="debug-header">
             <h2>Debug Log</h2>
-            <button id="clearDebug" class="secondary small">Clear</button>
+            <div class="debug-actions">
+              <button id="copyDebug" class="secondary small">Copy</button>
+              <button id="clearDebug" class="secondary small">Clear</button>
+            </div>
           </div>
           <pre id="debugLog">No requests yet.</pre>
         </div>
-        <div id="history">
-          <h2>History</h2>
-          <div id="historyList"></div>
-        </div>
-        <p class="page-version">v2026.08.08.1.0</p>
       </div>
     </main>
     <script>
@@ -323,6 +362,7 @@
       var historyListEl = document.getElementById("historyList");
       var debugLogEl = document.getElementById("debugLog");
       var clearDebugEl = document.getElementById("clearDebug");
+      var copyDebugEl = document.getElementById("copyDebug");
       var debugEntries = [];
 
       function logDebug(label, data) {
@@ -337,6 +377,16 @@
       clearDebugEl.addEventListener("click", function () {
         debugEntries = [];
         debugLogEl.textContent = "No requests yet.";
+      });
+
+      copyDebugEl.addEventListener("click", function () {
+        navigator.clipboard.writeText(debugLogEl.textContent).then(function () {
+          var original = copyDebugEl.textContent;
+          copyDebugEl.textContent = "Copied!";
+          setTimeout(function () {
+            copyDebugEl.textContent = original;
+          }, 1500);
+        });
       });
 
       function getHistory() {
@@ -456,7 +506,9 @@
             if (!result) return;
             if (!result.ok) {
               resultEl.className = "error";
-              resultEl.textContent = result.data.error || "Something went wrong.";
+              resultEl.textContent = result.data.details
+                ? result.data.error + ": " + result.data.details
+                : result.data.error || "Something went wrong.";
               return;
             }
             var action = result.data.action || "(no action returned)";
