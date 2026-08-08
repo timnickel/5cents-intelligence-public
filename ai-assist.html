@@ -241,6 +241,44 @@
         letter-spacing: 0.02em;
         text-align: center;
       }
+
+      #debug {
+        margin-top: 20px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: rgba(6, 12, 22, 0.7);
+        padding: 14px 16px;
+      }
+
+      .debug-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+
+      .debug-header h2 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #cbd5e1;
+      }
+
+      button.small {
+        flex: none;
+        padding: 6px 12px;
+        font-size: 0.78rem;
+      }
+
+      #debugLog {
+        margin: 0;
+        max-height: 280px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: "Consolas", "Menlo", monospace;
+        font-size: 0.76rem;
+        color: var(--muted);
+      }
     </style>
   </head>
   <body>
@@ -260,11 +298,18 @@
           <button id="settings" class="secondary" title="Change passphrase">&#128273;</button>
         </div>
         <div id="result" class="empty">Result will appear here.</div>
+        <div id="debug">
+          <div class="debug-header">
+            <h2>Debug Log</h2>
+            <button id="clearDebug" class="secondary small">Clear</button>
+          </div>
+          <pre id="debugLog">No requests yet.</pre>
+        </div>
         <div id="history">
           <h2>History</h2>
           <div id="historyList"></div>
         </div>
-        <p class="page-version">v2026.08.07.1.0</p>
+        <p class="page-version">v2026.08.08.1.0</p>
       </div>
     </main>
     <script>
@@ -276,6 +321,23 @@
       var settingsEl = document.getElementById("settings");
       var resultEl = document.getElementById("result");
       var historyListEl = document.getElementById("historyList");
+      var debugLogEl = document.getElementById("debugLog");
+      var clearDebugEl = document.getElementById("clearDebug");
+      var debugEntries = [];
+
+      function logDebug(label, data) {
+        var entry = "[" + new Date().toLocaleTimeString() + "] " + label;
+        if (data !== undefined) {
+          entry += "\n" + (typeof data === "string" ? data : JSON.stringify(data, null, 2));
+        }
+        debugEntries.unshift(entry);
+        debugLogEl.textContent = debugEntries.join("\n\n---\n\n");
+      }
+
+      clearDebugEl.addEventListener("click", function () {
+        debugEntries = [];
+        debugLogEl.textContent = "No requests yet.";
+      });
 
       function getHistory() {
         try {
@@ -349,22 +411,44 @@
         resultEl.className = "empty";
         resultEl.textContent = "Thinking...";
 
+        var requestHeaders = {
+          "Content-Type": "application/json",
+          "X-AI-Assist-Secret": secret,
+        };
+        logDebug("Request \u2192 POST /api/ai-assist-process", {
+          headers: requestHeaders,
+          body: { message: message },
+        });
+
         fetch("/api/ai-assist-process", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-AI-Assist-Secret": secret,
-          },
+          headers: requestHeaders,
           body: JSON.stringify({ message: message }),
         })
           .then(function (response) {
-            if (response.status === 401) {
-              localStorage.removeItem(SECRET_KEY);
-              resultEl.className = "error";
-              resultEl.textContent = "Wrong passphrase. Try again.";
-              return null;
-            }
-            return response.json().then(function (data) {
+            return response.text().then(function (rawText) {
+              var responseHeaders = {};
+              response.headers.forEach(function (value, key) {
+                responseHeaders[key] = value;
+              });
+              logDebug("Response \u2190 " + response.status + " " + response.statusText, {
+                headers: responseHeaders,
+                body: rawText,
+              });
+
+              var data;
+              try {
+                data = rawText ? JSON.parse(rawText) : {};
+              } catch (e) {
+                data = { error: "Invalid JSON response" };
+              }
+
+              if (response.status === 401) {
+                localStorage.removeItem(SECRET_KEY);
+                resultEl.className = "error";
+                resultEl.textContent = "Wrong passphrase. Try again.";
+                return null;
+              }
               return { ok: response.ok, data: data };
             });
           })
@@ -381,7 +465,8 @@
             addToHistory(message, action);
             messageEl.value = "";
           })
-          .catch(function () {
+          .catch(function (error) {
+            logDebug("Error", error && error.message ? error.message : String(error));
             resultEl.className = "error";
             resultEl.textContent = "Network error. Try again.";
           })
