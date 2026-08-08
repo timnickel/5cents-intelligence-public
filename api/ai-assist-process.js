@@ -3,16 +3,21 @@ const Anthropic = require("@anthropic-ai/sdk");
 const client = new Anthropic();
 
 const SYSTEM_PROMPT =
-  "You turn a rough note, message, or thought into one clear, actionable next step, considering the full " +
-  "conversation so far. Respond with ONLY a JSON object, no markdown fences, no prose, in this exact shape: " +
-  '{"action": "one short sentence stating the next action", "options": ["short option", "short option"]}. ' +
-  '"options" must contain 2 or 3 distinct, concise (2-5 word) choices the user could pick to move forward from ' +
-  "the action just given — they become button labels, so keep them short and mutually exclusive.";
+  "You turn a rough note, message, or thought into one clear, actionable next step. You also maintain a short " +
+  "running memory of only the important, durable facts from the conversation so far (goals, decisions, " +
+  "constraints, open threads) so the conversation can continue indefinitely without resending the full " +
+  'transcript. Respond with ONLY a JSON object, no markdown fences, no prose, in this exact shape: {"action": ' +
+  '"one short sentence stating the next action", "options": ["short option", "short option"], "memory": "the ' +
+  'updated running memory, as a short bullet list or 2-4 sentences, max roughly 500 characters"}. "options" must ' +
+  "contain 2 or 3 distinct, concise (2-5 word) choices the user could pick to move forward from the action just " +
+  'given — they become button labels, so keep them short and mutually exclusive. "memory" must always be ' +
+  "present, even if unchanged, and must stay concise — drop anything no longer relevant rather than letting it " +
+  "grow without bound.";
 
 const MAX_MESSAGE_LENGTH = 4000;
-const MAX_MESSAGES = 20;
+const MAX_MEMORY_LENGTH = 3000;
 
-function parseModelResponse(text) {
+function parseModelResponse(text, previousMemory) {
   let jsonText = text.trim();
   const fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fenceMatch) {
@@ -23,7 +28,8 @@ function parseModelResponse(text) {
   const options = Array.isArray(parsed.options)
     ? parsed.options.filter((o) => typeof o === "string" && o.trim()).slice(0, 3)
     : [];
-  return { action, options };
+  const memory = typeof parsed.memory === "string" && parsed.memory.trim() ? parsed.memory.trim() : previousMemory;
+  return { action, options, memory };
 }
 
 module.exports = async (req, res) => {
@@ -38,33 +44,19 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const rawMessages = Array.isArray(req.body?.messages) ? req.body.messages : null;
-  if (!rawMessages || rawMessages.length === 0) {
-    res.status(400).json({ error: "messages is required" });
+  const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+  if (!message) {
+    res.status(400).json({ error: "message is required" });
     return;
   }
-  if (rawMessages.length > MAX_MESSAGES) {
-    res.status(400).json({ error: "too many messages (max " + MAX_MESSAGES + ")" });
+  if (message.length > MAX_MESSAGE_LENGTH) {
+    res.status(400).json({ error: "message is too long (max " + MAX_MESSAGE_LENGTH + " characters)" });
     return;
   }
 
-  const messages = [];
-  for (const entry of rawMessages) {
-    const role = entry?.role === "assistant" ? "assistant" : entry?.role === "user" ? "user" : null;
-    const content = typeof entry?.content === "string" ? entry.content.trim() : "";
-    if (!role || !content) {
-      res.status(400).json({ error: "each message needs a valid role and non-empty content" });
-      return;
-    }
-    if (content.length > MAX_MESSAGE_LENGTH) {
-      res.status(400).json({ error: "a message is too long (max " + MAX_MESSAGE_LENGTH + " characters)" });
-      return;
-    }
-    messages.push({ role, content });
-  }
-  if (messages[messages.length - 1].role !== "user") {
-    res.status(400).json({ error: "the last message must be from the user" });
-    return;
+  let memory = typeof req.body?.memory === "string" ? req.body.memory.trim() : "";
+  if (memory.length > MAX_MEMORY_LENGTH) {
+    memory = memory.slice(-MAX_MEMORY_LENGTH);
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -72,24 +64,27 @@ module.exports = async (req, res) => {
     return;
   }
 
+  const userContent = (memory ? "Conversation memory so far:\n" + memory + "\n\n" : "") + "New message:\n" + message;
+
   try {
     const response = await client.messages.create({
       model: "claude-haiku-4-5",
-      max_tokens: 300,
+      max_tokens: 500,
       system: SYSTEM_PROMPT,
-      messages,
+      messages: [{ role: "user", content: userContent }],
     });
 
     const rawText = response.content.find((block) => block.type === "text")?.text ?? "";
     let action = "";
     let options = [];
+    let newMemory = memory;
     try {
-      ({ action, options } = parseModelResponse(rawText));
+      ({ action, options, memory: newMemory } = parseModelResponse(rawText, memory));
     } catch (parseError) {
       action = rawText.trim();
       options = [];
     }
-    res.status(200).json({ action, options });
+    res.status(200).json({ action, options, memory: newMemory });
   } catch (error) {
     console.error("ai-assist-process error:", error);
     res.status(502).json({
