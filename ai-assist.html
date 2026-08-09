@@ -267,6 +267,16 @@
         color: #cbd5e1;
       }
 
+      #savedThreads {
+        margin-top: 28px;
+      }
+
+      #savedThreads h2 {
+        font-size: 0.95rem;
+        margin: 0 0 12px;
+        color: #cbd5e1;
+      }
+
       .thread-item {
         display: flex;
         align-items: center;
@@ -318,6 +328,41 @@
 
       button.thread-delete:hover {
         background: rgba(248, 113, 113, 0.22);
+      }
+
+      button.thread-save {
+        flex: none;
+        padding: 4px 8px;
+        font-size: 0.75rem;
+        background: rgba(52, 211, 153, 0.12);
+        color: var(--green);
+        border: 1px solid rgba(52, 211, 153, 0.3);
+        border-radius: 8px;
+      }
+
+      button.thread-save:hover {
+        background: rgba(52, 211, 153, 0.22);
+      }
+
+      button.thread-save:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+
+      .bot-name {
+        display: block;
+        margin: 2px auto 0;
+        padding: 2px 10px;
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-size: 0.8rem;
+        cursor: pointer;
+        flex: none;
+      }
+
+      .bot-name:hover {
+        color: var(--text);
       }
 
       .history-item {
@@ -465,9 +510,10 @@
           <p class="eyebrow">Private</p>
           <div class="mascot-wrap">
             <div class="mascot-glow">
-              <img src="/robot.png" alt="AI Assist robot mascot waving" />
+              <img id="mascotImg" src="/frog-idle.png" alt="AI Assist frog mascot" />
             </div>
           </div>
+          <button type="button" id="botName" class="bot-name" title="Rename your bot"></button>
           <h1>AI Assist</h1>
           <p class="intro">Extracts a single clear next action from whatever you paste in.</p>
           <textarea id="message" placeholder="Type or paste a message, idea, or note..." autofocus></textarea>
@@ -483,7 +529,11 @@
             <h2>Threads</h2>
             <div id="threadList"></div>
           </div>
-          <p class="page-version">v2026.08.08.6.0</p>
+          <div id="savedThreads">
+            <h2 id="savedThreadsHeader">Saved to bot</h2>
+            <div id="savedThreadList"></div>
+          </div>
+          <p class="page-version">v2026.08.09.7.0</p>
         </div>
         <div id="debug">
           <div class="debug-header">
@@ -500,8 +550,17 @@
     <script>
       var SECRET_KEY = "ai-assist-secret";
       var THREADS_KEY = "ai-assist-threads";
+      var BOT_NAME_KEY = "ai-assist-bot-name";
+      var DEFAULT_BOT_NAME = "Frogger";
       var THREADS_LIMIT = 50;
       var TITLE_LENGTH = 60;
+      var MASCOT_STATES = {
+        idle: "/frog-idle.png",
+        thinking: "/frog-thinking.png",
+        happy: "/frog-happy.png",
+        alert: "/frog-alert.png",
+      };
+      var mascotResetTimer = null;
       var messageEl = document.getElementById("message");
       var submitEl = document.getElementById("submit");
       var newChatEl = document.getElementById("newChat");
@@ -510,7 +569,11 @@
       var transcriptEl = document.getElementById("transcript");
       var optionsEl = document.getElementById("options");
       var threadListEl = document.getElementById("threadList");
+      var savedThreadListEl = document.getElementById("savedThreadList");
+      var savedThreadsHeaderEl = document.getElementById("savedThreadsHeader");
       var memoryContentEl = document.getElementById("memoryContent");
+      var mascotImgEl = document.getElementById("mascotImg");
+      var botNameEl = document.getElementById("botName");
       var debugLogEl = document.getElementById("debugLog");
       var clearDebugEl = document.getElementById("clearDebug");
       var copyDebugEl = document.getElementById("copyDebug");
@@ -553,6 +616,34 @@
         if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
         return "t" + Date.now() + Math.random().toString(16).slice(2);
       }
+
+      function setMascot(state, opts) {
+        clearTimeout(mascotResetTimer);
+        mascotImgEl.src = MASCOT_STATES[state] || MASCOT_STATES.idle;
+        if (opts && opts.revertAfter) {
+          mascotResetTimer = setTimeout(function () {
+            mascotImgEl.src = MASCOT_STATES.idle;
+          }, opts.revertAfter);
+        }
+      }
+
+      function getBotName() {
+        return localStorage.getItem(BOT_NAME_KEY) || DEFAULT_BOT_NAME;
+      }
+
+      function renderBotName() {
+        var name = getBotName();
+        botNameEl.textContent = name + " ✎";
+        savedThreadsHeaderEl.textContent = "Saved to " + name;
+      }
+
+      botNameEl.addEventListener("click", function () {
+        var value = window.prompt("Name your bot:", getBotName());
+        if (value && value.trim()) {
+          localStorage.setItem(BOT_NAME_KEY, value.trim());
+          renderBotName();
+        }
+      });
 
       function getThreads() {
         try {
@@ -599,12 +690,15 @@
         threadListEl.innerHTML = threads
           .map(function (thread) {
             var activeClass = thread.id === currentThreadId ? " active" : "";
+            var saveLabel = thread.savedRemote ? "Saved" : "Save";
+            var saveDisabled = thread.savedRemote ? " disabled" : "";
             return (
               '<div class="thread-item' + activeClass + '" data-id="' + thread.id + '">' +
               '<div class="thread-info">' +
               '<div class="thread-title">' + escapeHtml(thread.title || "Untitled") + "</div>" +
               '<div class="thread-time">' + new Date(thread.updatedAt).toLocaleString() + "</div>" +
               "</div>" +
+              '<button type="button" class="thread-save" data-id="' + thread.id + '"' + saveDisabled + ">" + saveLabel + "</button>" +
               '<button type="button" class="thread-delete" data-id="' + thread.id + '">Delete</button>' +
               "</div>"
             );
@@ -622,6 +716,191 @@
             deleteThread(el.getAttribute("data-id"));
           });
         });
+        Array.prototype.forEach.call(threadListEl.querySelectorAll(".thread-save"), function (el) {
+          el.addEventListener("click", function (e) {
+            e.stopPropagation();
+            saveThreadToBot(el.getAttribute("data-id"), el);
+          });
+        });
+      }
+
+      function saveThreadToBot(id, buttonEl) {
+        var thread = getThreads().filter(function (t) {
+          return t.id === id;
+        })[0];
+        if (!thread) return;
+
+        var secret = getSecret();
+        if (!secret) return;
+
+        buttonEl.disabled = true;
+        buttonEl.textContent = "Saving...";
+
+        var requestHeaders = {
+          "Content-Type": "application/json",
+          "X-AI-Assist-Secret": secret,
+        };
+        logDebug("Request → POST /api/ai-assist-bot-store", { headers: requestHeaders, body: { thread: thread } });
+
+        fetch("/api/ai-assist-bot-store", {
+          method: "POST",
+          headers: requestHeaders,
+          body: JSON.stringify({ thread: thread }),
+        })
+          .then(function (response) {
+            return response.text().then(function (rawText) {
+              logDebug("Response ← " + response.status + " " + response.statusText, rawText);
+              return { ok: response.ok, status: response.status };
+            });
+          })
+          .then(function (result) {
+            if (!result.ok) {
+              buttonEl.disabled = false;
+              buttonEl.textContent = "Save";
+              statusEl.className = "error";
+              statusEl.textContent =
+                result.status === 503 ? "Saved threads aren't set up yet." : "Could not save thread.";
+              return;
+            }
+            var threads = getThreads();
+            threads.forEach(function (t) {
+              if (t.id === id) t.savedRemote = true;
+            });
+            saveThreads(threads);
+            renderThreads();
+            renderSavedThreads();
+          })
+          .catch(function (error) {
+            logDebug("Error", error && error.message ? error.message : String(error));
+            buttonEl.disabled = false;
+            buttonEl.textContent = "Save";
+            statusEl.className = "error";
+            statusEl.textContent = "Network error. Try again.";
+          });
+      }
+
+      function renderSavedThreads() {
+        var secret = localStorage.getItem(SECRET_KEY);
+        if (!secret) {
+          savedThreadListEl.innerHTML = '<p class="history-empty">Unlock AI Assist to see saved threads.</p>';
+          return;
+        }
+
+        fetch("/api/ai-assist-bot-store", {
+          headers: { "X-AI-Assist-Secret": secret },
+        })
+          .then(function (response) {
+            return response.text().then(function (rawText) {
+              logDebug("Response ← " + response.status + " " + response.statusText, rawText);
+              if (response.status === 503) {
+                savedThreadListEl.innerHTML = '<p class="history-empty">Saved threads aren\'t set up yet.</p>';
+                return null;
+              }
+              if (!response.ok) {
+                savedThreadListEl.innerHTML = '<p class="history-empty">Could not load saved threads.</p>';
+                return null;
+              }
+              return rawText ? JSON.parse(rawText) : [];
+            });
+          })
+          .then(function (summaries) {
+            if (!summaries) return;
+            if (summaries.length === 0) {
+              savedThreadListEl.innerHTML = '<p class="history-empty">No saved threads yet.</p>';
+              return;
+            }
+            savedThreadListEl.innerHTML = summaries
+              .map(function (thread) {
+                return (
+                  '<div class="thread-item" data-id="' + thread.id + '">' +
+                  '<div class="thread-info">' +
+                  '<div class="thread-title">' + escapeHtml(thread.title || "Untitled") + "</div>" +
+                  '<div class="thread-time">' + new Date(thread.updatedAt).toLocaleString() + "</div>" +
+                  "</div>" +
+                  '<button type="button" class="thread-delete" data-id="' + thread.id + '">Delete</button>' +
+                  "</div>"
+                );
+              })
+              .join("");
+
+            Array.prototype.forEach.call(savedThreadListEl.querySelectorAll(".thread-item"), function (el) {
+              el.addEventListener("click", function () {
+                loadSavedThread(el.getAttribute("data-id"));
+              });
+            });
+            Array.prototype.forEach.call(savedThreadListEl.querySelectorAll(".thread-delete"), function (el) {
+              el.addEventListener("click", function (e) {
+                e.stopPropagation();
+                deleteSavedThread(el.getAttribute("data-id"));
+              });
+            });
+          })
+          .catch(function (error) {
+            logDebug("Error", error && error.message ? error.message : String(error));
+            savedThreadListEl.innerHTML = '<p class="history-empty">Could not load saved threads.</p>';
+          });
+      }
+
+      function loadSavedThread(id) {
+        var secret = getSecret();
+        if (!secret) return;
+
+        fetch("/api/ai-assist-bot-store?id=" + encodeURIComponent(id), {
+          headers: { "X-AI-Assist-Secret": secret },
+        })
+          .then(function (response) {
+            return response.text().then(function (rawText) {
+              logDebug("Response ← " + response.status + " " + response.statusText, rawText);
+              return response.ok ? JSON.parse(rawText) : null;
+            });
+          })
+          .then(function (thread) {
+            if (!thread) {
+              statusEl.className = "error";
+              statusEl.textContent = "Could not load saved thread.";
+              return;
+            }
+            currentThreadId = thread.id;
+            conversation = thread.messages.slice();
+            currentMemory = thread.memory || "";
+            statusEl.className = "";
+            statusEl.textContent = "";
+            setMascot("idle");
+            renderTranscript();
+            renderMemory();
+            renderOptions(thread.options, function (label) {
+              sendTurn(label);
+            });
+            renderThreads();
+            renderSavedThreads();
+            messageEl.focus();
+          })
+          .catch(function (error) {
+            logDebug("Error", error && error.message ? error.message : String(error));
+            statusEl.className = "error";
+            statusEl.textContent = "Network error. Try again.";
+          });
+      }
+
+      function deleteSavedThread(id) {
+        var secret = getSecret();
+        if (!secret) return;
+
+        fetch("/api/ai-assist-bot-store?id=" + encodeURIComponent(id), {
+          method: "DELETE",
+          headers: { "X-AI-Assist-Secret": secret },
+        })
+          .then(function (response) {
+            return response.text().then(function (rawText) {
+              logDebug("Response ← " + response.status + " " + response.statusText, rawText);
+            });
+          })
+          .then(function () {
+            renderSavedThreads();
+          })
+          .catch(function (error) {
+            logDebug("Error", error && error.message ? error.message : String(error));
+          });
       }
 
       function deleteThread(id) {
@@ -647,6 +926,7 @@
         currentMemory = thread.memory || "";
         statusEl.className = "";
         statusEl.textContent = "";
+        setMascot("idle");
         renderTranscript();
         renderMemory();
         renderOptions(thread.options, function (label) {
@@ -663,6 +943,7 @@
         statusEl.className = "";
         statusEl.textContent = "";
         optionsEl.innerHTML = "";
+        setMascot("idle");
         renderTranscript();
         renderMemory();
         renderThreads();
@@ -750,6 +1031,7 @@
         submitEl.textContent = "Processing...";
         statusEl.className = "";
         statusEl.textContent = "Thinking...";
+        setMascot("thinking");
 
         var requestHeaders = {
           "Content-Type": "application/json",
@@ -789,6 +1071,7 @@
                 statusEl.textContent = "Wrong passphrase. Try again.";
                 conversation.pop();
                 renderTranscript();
+                setMascot("alert", { revertAfter: 2000 });
                 return null;
               }
               return { ok: response.ok, data: data };
@@ -803,6 +1086,7 @@
                 : result.data.error || "Something went wrong.";
               conversation.pop();
               renderTranscript();
+              setMascot("alert", { revertAfter: 2000 });
               return;
             }
             var action = result.data.action || "(no action returned)";
@@ -816,6 +1100,7 @@
               sendTurn(label);
             });
             persistCurrentThread(result.data.options, currentMemory);
+            setMascot("happy", { revertAfter: 2500 });
           })
           .catch(function (error) {
             logDebug("Error", error && error.message ? error.message : String(error));
@@ -823,6 +1108,7 @@
             statusEl.textContent = "Network error. Try again.";
             conversation.pop();
             renderTranscript();
+            setMascot("alert", { revertAfter: 2000 });
           })
           .finally(function () {
             submitEl.disabled = false;
@@ -846,9 +1132,11 @@
       });
 
       currentThreadId = generateId();
+      renderBotName();
       renderTranscript();
       renderMemory();
       renderThreads();
+      renderSavedThreads();
     </script>
   </body>
 </html>
