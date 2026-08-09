@@ -1,4 +1,5 @@
-const { put, list, del } = require("@vercel/blob");
+const { put, list, del, get } = require("@vercel/blob");
+const { text: streamToText } = require("node:stream/consumers");
 
 const PREFIX = "bot-threads/";
 
@@ -11,9 +12,11 @@ function checkAuth(req, res) {
   return true;
 }
 
-async function fetchJson(url) {
-  const response = await fetch(url);
-  return response.json();
+async function readBlob(pathname) {
+  const result = await get(pathname, { access: "private" });
+  if (!result) return null;
+  const raw = await streamToText(result.stream);
+  return JSON.parse(raw);
 }
 
 module.exports = async (req, res) => {
@@ -32,7 +35,7 @@ module.exports = async (req, res) => {
         return;
       }
       await put(PREFIX + thread.id + ".json", JSON.stringify(thread), {
-        access: "public",
+        access: "private",
         addRandomSuffix: false,
         allowOverwrite: true,
         contentType: "application/json",
@@ -44,19 +47,19 @@ module.exports = async (req, res) => {
     if (req.method === "GET") {
       const id = req.query?.id;
       if (id) {
-        const { blobs } = await list({ prefix: PREFIX + id + ".json", limit: 1 });
-        if (!blobs.length) {
+        const thread = await readBlob(PREFIX + id + ".json");
+        if (!thread) {
           res.status(404).json({ error: "Not found" });
           return;
         }
-        const thread = await fetchJson(blobs[0].url);
         res.status(200).json(thread);
         return;
       }
 
       const { blobs } = await list({ prefix: PREFIX });
-      const threads = await Promise.all(blobs.map((blob) => fetchJson(blob.url)));
+      const threads = await Promise.all(blobs.map((blob) => readBlob(blob.pathname)));
       const summaries = threads
+        .filter(Boolean)
         .map((thread) => ({ id: thread.id, title: thread.title, updatedAt: thread.updatedAt }))
         .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
       res.status(200).json(summaries);
