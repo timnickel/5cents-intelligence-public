@@ -34,6 +34,10 @@ module.exports = async (req, res) => {
         res.status(400).json({ error: "thread with an id is required" });
         return;
       }
+      if (typeof thread.botName !== "string" || !thread.botName.trim()) {
+        res.status(400).json({ error: "thread.botName is required" });
+        return;
+      }
       await put(PREFIX + thread.id + ".json", JSON.stringify(thread), {
         access: "private",
         addRandomSuffix: false,
@@ -60,7 +64,7 @@ module.exports = async (req, res) => {
       const threads = await Promise.all(blobs.map((blob) => readBlob(blob.pathname)));
       const summaries = threads
         .filter(Boolean)
-        .map((thread) => ({ id: thread.id, title: thread.title, updatedAt: thread.updatedAt }))
+        .map((thread) => ({ id: thread.id, title: thread.title, updatedAt: thread.updatedAt, botName: thread.botName }))
         .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
       res.status(200).json(summaries);
       return;

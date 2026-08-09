@@ -533,7 +533,7 @@
             <h2 id="savedThreadsHeader">Saved to bot</h2>
             <div id="savedThreadList"></div>
           </div>
-          <p class="page-version">v2026.08.09.1.0</p>
+          <p class="page-version">v2026.08.09.2.0</p>
         </div>
         <div id="debug">
           <div class="debug-header">
@@ -736,16 +736,19 @@
         buttonEl.disabled = true;
         buttonEl.textContent = "Saving...";
 
+        var botName = getBotName();
+        var payloadThread = Object.assign({}, thread, { botName: botName });
+
         var requestHeaders = {
           "Content-Type": "application/json",
           "X-AI-Assist-Secret": secret,
         };
-        logDebug("Request → POST /api/ai-assist-bot-store", { headers: requestHeaders, body: { thread: thread } });
+        logDebug("Request → POST /api/ai-assist-bot-store", { headers: requestHeaders, body: { thread: payloadThread } });
 
         fetch("/api/ai-assist-bot-store", {
           method: "POST",
           headers: requestHeaders,
-          body: JSON.stringify({ thread: thread }),
+          body: JSON.stringify({ thread: payloadThread }),
         })
           .then(function (response) {
             return response.text().then(function (rawText) {
@@ -764,7 +767,10 @@
             }
             var threads = getThreads();
             threads.forEach(function (t) {
-              if (t.id === id) t.savedRemote = true;
+              if (t.id === id) {
+                t.savedRemote = true;
+                t.botName = botName;
+              }
             });
             saveThreads(threads);
             renderThreads();
@@ -815,7 +821,9 @@
                   '<div class="thread-item" data-id="' + thread.id + '">' +
                   '<div class="thread-info">' +
                   '<div class="thread-title">' + escapeHtml(thread.title || "Untitled") + "</div>" +
-                  '<div class="thread-time">' + new Date(thread.updatedAt).toLocaleString() + "</div>" +
+                  '<div class="thread-time">' +
+                  escapeHtml(thread.botName || "Unknown bot") + " · " + new Date(thread.updatedAt).toLocaleString() +
+                  "</div>" +
                   "</div>" +
                   '<button type="button" class="thread-delete" data-id="' + thread.id + '">Delete</button>' +
                   "</div>"
