@@ -365,6 +365,86 @@
         color: var(--text);
       }
 
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(2, 6, 23, 0.72);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        z-index: 1000;
+      }
+
+      .modal-backdrop[hidden] {
+        display: none;
+      }
+
+      .modal-card {
+        width: 100%;
+        max-width: 320px;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: linear-gradient(180deg, rgba(10, 18, 32, 0.98), rgba(8, 16, 29, 0.96));
+        box-shadow: 0 30px 90px rgba(2, 6, 23, 0.6);
+        padding: 28px;
+        text-align: center;
+      }
+
+      .modal-frog {
+        width: 88px;
+        height: 88px;
+        border-radius: 50%;
+        object-fit: cover;
+        object-position: 50% 22%;
+        background: #0a0a0c;
+        box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.5), 0 8px 24px rgba(2, 6, 23, 0.55);
+        margin: 0 auto 14px;
+        display: block;
+      }
+
+      .modal-card h2 {
+        margin: 0 0 8px;
+        font-size: 1.2rem;
+      }
+
+      .modal-card p {
+        margin: 0;
+        color: #cbd5e1;
+        font-size: 0.85rem;
+        line-height: 1.5;
+      }
+
+      .modal-card input {
+        width: 100%;
+        margin-top: 16px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: rgba(6, 12, 22, 0.7);
+        color: var(--text);
+        font-size: 1rem;
+        font-family: inherit;
+      }
+
+      .modal-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .modal-footer {
+        margin-top: 16px !important;
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
+        font-size: 0.76rem !important;
+        color: var(--muted) !important;
+      }
+
+      .modal-footer a {
+        color: var(--cyan);
+      }
+
       .history-item {
         padding: 12px 14px;
         border-radius: 14px;
@@ -533,7 +613,7 @@
             <h2 id="savedThreadsHeader">Saved to bot</h2>
             <div id="savedThreadList"></div>
           </div>
-          <p class="page-version">v2026.08.09.2.0</p>
+          <p class="page-version">v2026.08.09.3.0</p>
         </div>
         <div id="debug">
           <div class="debug-header">
@@ -547,11 +627,23 @@
         </div>
       </div>
     </main>
+    <div id="botNameModal" class="modal-backdrop" hidden>
+      <div class="modal-card">
+        <img src="/frog-happy.png" alt="Friendly frog bot mascot" class="modal-frog" />
+        <h2>Name your frog bot</h2>
+        <p>Everyone gets their own bot — pick a name for yours. It's how your saved threads will be labeled.</p>
+        <input type="text" id="botNameInput" placeholder="e.g. Kermit" maxlength="40" />
+        <div class="modal-actions">
+          <button type="button" id="botNameCancel" class="secondary">Cancel</button>
+          <button type="button" id="botNameSave">Save name</button>
+        </div>
+        <p class="modal-footer">Questions? Email <a href="mailto:tnickel2829@gmail.com">tnickel2829@gmail.com</a></p>
+      </div>
+    </div>
     <script>
       var SECRET_KEY = "ai-assist-secret";
       var THREADS_KEY = "ai-assist-threads";
       var BOT_NAME_KEY = "ai-assist-bot-name";
-      var DEFAULT_BOT_NAME = "Frogger";
       var THREADS_LIMIT = 50;
       var TITLE_LENGTH = 60;
       var MASCOT_STATES = {
@@ -574,6 +666,11 @@
       var memoryContentEl = document.getElementById("memoryContent");
       var mascotImgEl = document.getElementById("mascotImg");
       var botNameEl = document.getElementById("botName");
+      var botNameModalEl = document.getElementById("botNameModal");
+      var botNameInputEl = document.getElementById("botNameInput");
+      var botNameSaveEl = document.getElementById("botNameSave");
+      var botNameCancelEl = document.getElementById("botNameCancel");
+      var botNameModalMode = "rename";
       var debugLogEl = document.getElementById("debugLog");
       var clearDebugEl = document.getElementById("clearDebug");
       var copyDebugEl = document.getElementById("copyDebug");
@@ -628,20 +725,50 @@
       }
 
       function getBotName() {
-        return localStorage.getItem(BOT_NAME_KEY) || DEFAULT_BOT_NAME;
+        return localStorage.getItem(BOT_NAME_KEY) || "";
       }
 
       function renderBotName() {
         var name = getBotName();
-        botNameEl.textContent = name + " ✎";
-        savedThreadsHeaderEl.textContent = "Saved to " + name;
+        botNameEl.textContent = name ? name + " ✎" : "Name your bot";
+        savedThreadsHeaderEl.textContent = name ? "Saved to " + name : "Saved threads";
+      }
+
+      function openBotNameModal(mode) {
+        botNameModalMode = mode || "rename";
+        botNameInputEl.value = getBotName();
+        botNameCancelEl.style.display = botNameModalMode === "first-run" ? "none" : "";
+        botNameModalEl.hidden = false;
+        botNameInputEl.focus();
+      }
+
+      function closeBotNameModal() {
+        botNameModalEl.hidden = true;
+      }
+
+      function saveBotName() {
+        var value = botNameInputEl.value.trim();
+        if (!value) {
+          botNameInputEl.focus();
+          return;
+        }
+        localStorage.setItem(BOT_NAME_KEY, value);
+        renderBotName();
+        closeBotNameModal();
       }
 
       botNameEl.addEventListener("click", function () {
-        var value = window.prompt("Name your bot:", getBotName());
-        if (value && value.trim()) {
-          localStorage.setItem(BOT_NAME_KEY, value.trim());
-          renderBotName();
+        openBotNameModal("rename");
+      });
+
+      botNameCancelEl.addEventListener("click", closeBotNameModal);
+      botNameSaveEl.addEventListener("click", saveBotName);
+      botNameInputEl.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") saveBotName();
+      });
+      botNameModalEl.addEventListener("click", function (e) {
+        if (e.target === botNameModalEl && botNameModalMode !== "first-run") {
+          closeBotNameModal();
         }
       });
 
@@ -729,6 +856,11 @@
           return t.id === id;
         })[0];
         if (!thread) return;
+
+        if (!getBotName()) {
+          openBotNameModal("first-run");
+          return;
+        }
 
         var secret = getSecret();
         if (!secret) return;
@@ -1145,6 +1277,9 @@
       renderMemory();
       renderThreads();
       renderSavedThreads();
+      if (!getBotName()) {
+        openBotNameModal("first-run");
+      }
     </script>
   </body>
 </html>
