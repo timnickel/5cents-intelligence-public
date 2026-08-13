@@ -4,6 +4,11 @@ All notable changes to this repository should be recorded in this file.
 
 ## [Unreleased]
 
+### 2026.08.12.1.0
+- Added `/frogger`, an experimental passphrase-gated data explorer over the threads saved to bots from `/ai-assist`: an about blurb, KPI tiles (saved threads, distinct bots, total messages, avg. turns/thread, avg. memory length, most active bot), three bar charts (threads saved per day, threads per bot, conversation length distribution), a random-thread spotlight, and a full sortable/expandable thread table with transcripts.
+- Added `api/frogger-data.js`, a read-only endpoint (same `AI_ASSIST_SECRET` header auth as `api/ai-assist-bot-store.js`) that lists and returns every `bot-threads/*.json` blob in full — no new blob prefix, no writes, no changes to the existing bot-store endpoint.
+- `/frogger` reuses the `/ai-assist` passphrase and `localStorage` key rather than introducing a second secret (see `README.md`).
+
 ### 2026.08.09.4.0
 - Added a "🧪 Coming soon" preview section to `/ai-assist` announcing two upcoming features with non-functional mockups: a persistent "None of the above" option pill, and a "predicted future steps" forking roadmap (root action branching into 3 example paths, each with 3 example steps, animated in on scroll via `IntersectionObserver`). Purely decorative — no click handlers, no backing logic.
 

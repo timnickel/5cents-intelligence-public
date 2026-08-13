@@ -4,6 +4,7 @@
     { "source": "/tree", "destination": "/sunrise.html" },
     { "source": "/investments", "destination": "/investments.html" },
     { "source": "/ai-assist", "destination": "/ai-assist.html" },
+    { "source": "/frogger", "destination": "/frogger.html" },
     { "source": "/birthday", "destination": "/birthday.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
@@ -14,6 +15,10 @@
     },
     {
       "source": "/ai-assist",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/frogger",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     },
     {

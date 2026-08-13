@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Frogger · AI Assist Data Explorer · 5 Cents Intelligence</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #06101d;
+        --panel: rgba(9, 18, 33, 0.76);
+        --text: #f8fafc;
+        --muted: #94a3b8;
+        --line: rgba(148, 163, 184, 0.14);
+        --cyan: #7dd3fc;
+        --green: #34d399;
+        --red: #f87171;
+        --series: #3987e5;
+        --series-track: rgba(57, 135, 229, 0.14);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", Arial, sans-serif;
+        background:
+          radial-gradient(circle at 20% 10%, rgba(56, 189, 248, 0.14), transparent 24%),
+          radial-gradient(circle at 80% 30%, rgba(52, 211, 153, 0.08), transparent 30%),
+          linear-gradient(180deg, #06101d 0%, #081425 44%, #0d1728 100%);
+        color: var(--text);
+      }
+
+      main {
+        width: min(1080px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 32px 0 48px;
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: linear-gradient(180deg, rgba(10, 18, 32, 0.9), rgba(8, 16, 29, 0.76));
+        box-shadow: 0 30px 90px rgba(2, 6, 23, 0.32);
+        padding: 28px;
+        margin-bottom: 20px;
+      }
+
+      .hero {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+
+      .mascot-wrap img {
+        width: 76px;
+        height: 76px;
+        border-radius: 50%;
+        object-fit: cover;
+        object-position: 50% 22%;
+        background: #0a0a0c;
+        box-shadow:
+          0 0 0 2px rgba(125, 211, 252, 0.5),
+          0 8px 24px rgba(2, 6, 23, 0.55);
+        flex: none;
+      }
+
+      .eyebrow {
+        color: var(--cyan);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        margin: 0 0 4px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.5rem, 3.5vw, 1.9rem);
+        letter-spacing: -0.02em;
+      }
+
+      .intro {
+        margin: 12px 0 0;
+        color: #cbd5e1;
+        line-height: 1.6;
+        font-size: 0.92rem;
+        max-width: 68ch;
+      }
+
+      .intro a {
+        color: var(--cyan);
+      }
+
+      .experiment-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 14px;
+        padding: 3px 10px;
+        border-radius: 999px;
+        border: 1px dashed rgba(125, 211, 252, 0.5);
+        color: var(--cyan);
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      h2 {
+        margin: 0 0 4px;
+        font-size: 1.05rem;
+        color: #e2e8f0;
+      }
+
+      .section-blurb {
+        margin: 0 0 18px;
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+
+      /* Gate */
+      #gate {
+        text-align: center;
+        padding: 40px 28px;
+      }
+
+      #gate p {
+        color: var(--muted);
+        margin: 8px 0 18px;
+      }
+
+      button {
+        padding: 11px 20px;
+        border-radius: 12px;
+        border: none;
+        background: linear-gradient(180deg, var(--cyan), var(--green));
+        color: #06101d;
+        font-weight: 700;
+        font-size: 0.92rem;
+        cursor: pointer;
+      }
+
+      button:hover {
+        filter: brightness(1.05);
+      }
+
+      button.secondary {
+        background: rgba(15, 23, 42, 0.6);
+        color: var(--text);
+        border: 1px solid var(--line);
+      }
+
+      #status {
+        text-align: center;
+        color: var(--muted);
+        padding: 40px 0;
+      }
+
+      #status.error {
+        color: var(--red);
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      /* KPI row */
+      .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+      }
+
+      .kpi-tile {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(6, 12, 22, 0.55);
+        padding: 14px 16px;
+      }
+
+      .kpi-label {
+        font-size: 0.74rem;
+        color: var(--muted);
+        margin: 0 0 6px;
+      }
+
+      .kpi-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        line-height: 1.1;
+      }
+
+      .kpi-sub {
+        margin-top: 4px;
+        font-size: 0.72rem;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* Charts */
+      .chart-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 16px;
+      }
+
+      .chart-card {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(6, 12, 22, 0.55);
+        padding: 16px 18px 10px;
+      }
+
+      .chart-title {
+        font-size: 0.86rem;
+        font-weight: 600;
+        color: #e2e8f0;
+        margin: 0 0 14px;
+      }
+
+      .chart-plot {
+        position: relative;
+        height: 140px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .chart-gridline {
+        position: absolute;
+        left: 0;
+        right: 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .chart-gridline-label {
+        position: absolute;
+        left: 0;
+        transform: translateY(-100%);
+        font-size: 0.66rem;
+        color: var(--muted);
+        padding-bottom: 2px;
+      }
+
+      .chart-bars {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: flex-end;
+        gap: 2px;
+        padding-left: 2px;
+      }
+
+      .chart-bar-col {
+        flex: 1 1 0;
+        min-width: 4px;
+        max-width: 26px;
+        height: 100%;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        position: relative;
+        outline: none;
+      }
+
+      .chart-bar {
+        width: 100%;
+        max-width: 22px;
+        background: var(--series);
+        border-radius: 4px 4px 0 0;
+        min-height: 2px;
+        transition: filter 0.1s ease;
+      }
+
+      .chart-bar-col:hover .chart-bar,
+      .chart-bar-col:focus-visible .chart-bar {
+        filter: brightness(1.35);
+      }
+
+      .chart-bar-col:focus-visible {
+        box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.6);
+        border-radius: 4px;
+      }
+
+      .chart-bar-value {
+        position: absolute;
+        bottom: 100%;
+        margin-bottom: 3px;
+        font-size: 0.62rem;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+
+      .chart-x-labels {
+        display: flex;
+        gap: 2px;
+        margin-top: 6px;
+        padding-left: 2px;
+      }
+
+      .chart-x-label {
+        flex: 1 1 0;
+        min-width: 4px;
+        max-width: 26px;
+        font-size: 0.62rem;
+        color: var(--muted);
+        text-align: center;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .chart-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 140px;
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+
+      #tooltip {
+        position: fixed;
+        z-index: 1000;
+        pointer-events: none;
+        background: #0b1626;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 6px 10px;
+        font-size: 0.76rem;
+        box-shadow: 0 12px 30px rgba(2, 6, 23, 0.5);
+        transform: translate(-50%, -100%);
+        white-space: nowrap;
+      }
+
+      #tooltip .tt-value {
+        color: var(--text);
+        font-weight: 700;
+      }
+
+      #tooltip .tt-label {
+        color: var(--muted);
+        margin-top: 2px;
+      }
+
+      /* Spotlight */
+      .spotlight-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      #spotlightCard {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(6, 12, 22, 0.55);
+        padding: 16px 18px;
+      }
+
+      .spotlight-title {
+        font-size: 0.92rem;
+        margin-bottom: 4px;
+      }
+
+      .spotlight-meta {
+        font-size: 0.76rem;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+
+      .spotlight-action {
+        white-space: pre-wrap;
+        font-size: 0.85rem;
+        color: #cbd5e1;
+      }
+
+      /* Table */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.82rem;
+      }
+
+      th {
+        text-align: left;
+        color: var(--muted);
+        font-weight: 600;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      td {
+        padding: 10px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+
+      tr.thread-row {
+        cursor: pointer;
+      }
+
+      tr.thread-row:hover td {
+        background: rgba(125, 211, 252, 0.05);
+      }
+
+      .col-title {
+        max-width: 320px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .transcript-row td {
+        background: rgba(6, 12, 22, 0.4);
+      }
+
+      .transcript {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .transcript-item {
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: rgba(6, 12, 22, 0.55);
+      }
+
+      .transcript-role {
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+
+      .transcript-content {
+        white-space: pre-wrap;
+        font-size: 0.82rem;
+      }
+
+      .page-version {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 0.76rem;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="card hero">
+        <div class="mascot-wrap"><img src="/frog-idle.png" alt="Frogger mascot" /></div>
+        <div>
+          <p class="eyebrow">Private · Experimental</p>
+          <h1>Frogger — AI Assist Data Explorer</h1>
+          <p class="intro">
+            <a href="/ai-assist">AI Assist</a> is a private tool that turns a rough note or thought into one clear
+            next action, with a running memory so the conversation can continue indefinitely. Every thread a user
+            chooses to save under their bot's name is stored here. This page is a read-only look at that saved
+            data — a list of every thread plus stats and charts about it.
+          </p>
+          <span class="experiment-badge">🧪 Still experimenting</span>
+        </div>
+      </div>
+
+      <div id="gate" class="card">
+        <p>Enter your AI Assist passphrase to view the data.</p>
+        <button id="unlockBtn">Unlock</button>
+      </div>
+
+      <div id="status" hidden></div>
+
+      <div id="content" hidden>
+        <div class="card">
+          <h2>At a glance</h2>
+          <p class="section-blurb">Across every thread ever saved to a bot.</p>
+          <div class="kpi-grid" id="kpiGrid"></div>
+        </div>
+
+        <div class="card">
+          <h2>Charts</h2>
+          <p class="section-blurb">Counts, not conclusions — small dataset, so read these as a rough shape.</p>
+          <div class="chart-grid">
+            <div class="chart-card">
+              <p class="chart-title">Threads saved over time</p>
+              <div id="chartByDay"></div>
+            </div>
+            <div class="chart-card">
+              <p class="chart-title">Threads per bot</p>
+              <div id="chartByBot"></div>
+            </div>
+            <div class="chart-card">
+              <p class="chart-title">Conversation length (turns per thread)</p>
+              <div id="chartByLength"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="spotlight-row">
+            <div>
+              <h2>Spotlight</h2>
+              <p class="section-blurb" style="margin-bottom: 0">One saved thread, picked at random.</p>
+            </div>
+            <button id="rerollBtn" class="secondary">🎲 Reroll</button>
+          </div>
+          <div id="spotlightCard"></div>
+        </div>
+
+        <div class="card">
+          <h2>All saved threads</h2>
+          <p class="section-blurb">Click a row to expand the full transcript.</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Bot</th>
+                <th>Turns</th>
+                <th>Last updated</th>
+              </tr>
+            </thead>
+            <tbody id="threadTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <p class="page-version">v2026.08.12.1.0</p>
+    </main>
+    <div id="tooltip" hidden></div>
+    <script>
+      var SECRET_KEY = "ai-assist-secret";
+      var gateEl = document.getElementById("gate");
+      var unlockBtnEl = document.getElementById("unlockBtn");
+      var statusEl = document.getElementById("status");
+      var contentEl = document.getElementById("content");
+      var kpiGridEl = document.getElementById("kpiGrid");
+      var spotlightCardEl = document.getElementById("spotlightCard");
+      var rerollBtnEl = document.getElementById("rerollBtn");
+      var threadTableBodyEl = document.getElementById("threadTableBody");
+      var tooltipEl = document.getElementById("tooltip");
+
+      var allThreads = [];
+
+      function escapeHtml(str) {
+        var div = document.createElement("div");
+        div.textContent = str == null ? "" : str;
+        return div.innerHTML;
+      }
+
+      function getSecret() {
+        var secret = localStorage.getItem(SECRET_KEY);
+        if (!secret) {
+          secret = window.prompt("Enter your AI Assist passphrase:");
+          if (secret) localStorage.setItem(SECRET_KEY, secret);
+        }
+        return secret;
+      }
+
+      function showStatus(message, isError) {
+        statusEl.hidden = false;
+        statusEl.className = isError ? "error" : "";
+        statusEl.textContent = message;
+      }
+
+      function showGate() {
+        gateEl.hidden = false;
+        statusEl.hidden = true;
+        contentEl.hidden = true;
+      }
+
+      function loadData() {
+        var secret = getSecret();
+        if (!secret) return;
+
+        gateEl.hidden = true;
+        contentEl.hidden = true;
+        showStatus("Loading saved threads...", false);
+
+        fetch("/api/frogger-data", { headers: { "X-AI-Assist-Secret": secret } })
+          .then(function (response) {
+            return response.text().then(function (rawText) {
+              return { status: response.status, ok: response.ok, rawText: rawText };
+            });
+          })
+          .then(function (result) {
+            if (result.status === 401) {
+              localStorage.removeItem(SECRET_KEY);
+              showGate();
+              showStatus("Wrong passphrase. Try again.", true);
+              statusEl.hidden = true;
+              return;
+            }
+            if (result.status === 503) {
+              showStatus("Blob storage isn't configured on this deployment yet.", true);
+              return;
+            }
+            if (!result.ok) {
+              showStatus("Could not load saved threads.", true);
+              return;
+            }
+            var data;
+            try {
+              data = result.rawText ? JSON.parse(result.rawText) : [];
+            } catch (e) {
+              showStatus("Received an invalid response from the server.", true);
+              return;
+            }
+            allThreads = Array.isArray(data) ? data : [];
+            statusEl.hidden = true;
+            contentEl.hidden = false;
+            renderAll();
+          })
+          .catch(function () {
+            showStatus("Network error. Try again.", true);
+          });
+      }
+
+      unlockBtnEl.addEventListener("click", loadData);
+
+      // ---------- stats ----------
+
+      function turnsOf(thread) {
+        var count = Array.isArray(thread.messages) ? thread.messages.length : 0;
+        return Math.max(1, Math.round(count / 2));
+      }
+
+      function computeStats(threads) {
+        var total = threads.length;
+        var totalMessages = threads.reduce(function (sum, t) {
+          return sum + (Array.isArray(t.messages) ? t.messages.length : 0);
+        }, 0);
+        var byBot = {};
+        threads.forEach(function (t) {
+          var name = t.botName || "Unknown";
+          byBot[name] = (byBot[name] || 0) + 1;
+        });
+        var botNames = Object.keys(byBot);
+        var memoryLens = threads
+          .filter(function (t) { return t.memory; })
+          .map(function (t) { return t.memory.length; });
+        var avgMemory = memoryLens.length
+          ? Math.round(memoryLens.reduce(function (a, b) { return a + b; }, 0) / memoryLens.length)
+          : 0;
+        var longest = threads.reduce(function (best, t) {
+          return !best || turnsOf(t) > turnsOf(best) ? t : best;
+        }, null);
+        var mostRecent = threads.reduce(function (best, t) {
+          return !best || (t.updatedAt || 0) > (best.updatedAt || 0) ? t : best;
+        }, null);
+        var topBot = botNames.reduce(function (best, name) {
+          return !best || byBot[name] > byBot[best] ? name : best;
+        }, null);
+
+        return {
+          total: total,
+          totalMessages: totalMessages,
+          botCount: botNames.length,
+          avgTurns: total ? (totalMessages / 2 / total).toFixed(1) : "0",
+          avgMemory: avgMemory,
+          longest: longest,
+          mostRecent: mostRecent,
+          topBot: topBot,
+          topBotCount: topBot ? byBot[topBot] : 0,
+          byBot: byBot,
+        };
+      }
+
+      function renderKpis(stats) {
+        var tiles = [
+          { label: "Saved threads", value: stats.total },
+          { label: "Distinct bots", value: stats.botCount },
+          { label: "Total messages", value: stats.totalMessages },
+          { label: "Avg. turns / thread", value: stats.avgTurns },
+          { label: "Avg. memory length", value: stats.avgMemory + " chars" },
+          {
+            label: "Most active bot",
+            value: stats.topBot || "—",
+            sub: stats.topBot ? stats.topBotCount + " thread" + (stats.topBotCount === 1 ? "" : "s") : "",
+          },
+        ];
+        kpiGridEl.innerHTML = "";
+        tiles.forEach(function (tile) {
+          var div = document.createElement("div");
+          div.className = "kpi-tile";
+          var label = document.createElement("p");
+          label.className = "kpi-label";
+          label.textContent = tile.label;
+          var value = document.createElement("div");
+          value.className = "kpi-value";
+          value.textContent = tile.value;
+          div.appendChild(label);
+          div.appendChild(value);
+          if (tile.sub) {
+            var sub = document.createElement("div");
+            sub.className = "kpi-sub";
+            sub.textContent = tile.sub;
+            div.appendChild(sub);
+          }
+          kpiGridEl.appendChild(div);
+        });
+      }
+
+      // ---------- generic bar chart ----------
+
+      function niceMax(value) {
+        if (value <= 0) return 1;
+        var magnitude = Math.pow(10, Math.floor(Math.log10(value)));
+        var normalized = value / magnitude;
+        var step = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+        return step * magnitude;
+      }
+
+      function showTooltip(targetEl, labelText, valueText) {
+        var rect = targetEl.getBoundingClientRect();
+        tooltipEl.innerHTML = "";
+        var valueDiv = document.createElement("div");
+        valueDiv.className = "tt-value";
+        valueDiv.textContent = valueText;
+        var labelDiv = document.createElement("div");
+        labelDiv.className = "tt-label";
+        labelDiv.textContent = labelText;
+        tooltipEl.appendChild(valueDiv);
+        tooltipEl.appendChild(labelDiv);
+        tooltipEl.style.left = rect.left + rect.width / 2 + "px";
+        tooltipEl.style.top = rect.top - 6 + "px";
+        tooltipEl.hidden = false;
+      }
+
+      function hideTooltip() {
+        tooltipEl.hidden = true;
+      }
+
+      function renderBarChart(containerEl, bars, opts) {
+        opts = opts || {};
+        containerEl.innerHTML = "";
+        if (!bars.length) {
+          var empty = document.createElement("div");
+          empty.className = "chart-empty";
+          empty.textContent = opts.emptyMessage || "No data yet.";
+          containerEl.appendChild(empty);
+          return;
+        }
+
+        var maxValue = niceMax(Math.max.apply(null, bars.map(function (b) { return b.value; })));
+
+        var plot = document.createElement("div");
+        plot.className = "chart-plot";
+
+        [0, 0.5, 1].forEach(function (fraction) {
+          var line = document.createElement("div");
+          line.className = "chart-gridline";
+          line.style.bottom = fraction * 100 + "%";
+          var lbl = document.createElement("span");
+          lbl.className = "chart-gridline-label";
+          lbl.textContent = Math.round(maxValue * fraction);
+          line.appendChild(lbl);
+          plot.appendChild(line);
+        });
+
+        var barsRow = document.createElement("div");
+        barsRow.className = "chart-bars";
+
+        bars.forEach(function (bar) {
+          var col = document.createElement("div");
+          col.className = "chart-bar-col";
+          col.tabIndex = 0;
+
+          var heightPct = maxValue > 0 ? Math.max((bar.value / maxValue) * 100, bar.value > 0 ? 2 : 0) : 0;
+          var barEl = document.createElement("div");
+          barEl.className = "chart-bar";
+          barEl.style.height = heightPct + "%";
+          col.appendChild(barEl);
+
+          if (opts.showValueLabels && bar.value > 0) {
+            var valLbl = document.createElement("span");
+            valLbl.className = "chart-bar-value";
+            valLbl.style.bottom = heightPct + "%";
+            valLbl.textContent = bar.value;
+            col.appendChild(valLbl);
+          }
+
+          var tooltipLabel = bar.tooltipLabel || bar.label;
+          var tooltipValue = opts.formatValue ? opts.formatValue(bar.value) : String(bar.value);
+          col.addEventListener("pointerenter", function () {
+            showTooltip(barEl, tooltipLabel, tooltipValue);
+          });
+          col.addEventListener("focus", function () {
+            showTooltip(barEl, tooltipLabel, tooltipValue);
+          });
+          col.addEventListener("pointerleave", hideTooltip);
+          col.addEventListener("blur", hideTooltip);
+
+          barsRow.appendChild(col);
+        });
+
+        plot.appendChild(barsRow);
+        containerEl.appendChild(plot);
+
+        var xLabels = document.createElement("div");
+        xLabels.className = "chart-x-labels";
+        bars.forEach(function (bar) {
+          var lbl = document.createElement("span");
+          lbl.className = "chart-x-label";
+          lbl.textContent = bar.label;
+          xLabels.appendChild(lbl);
+        });
+        containerEl.appendChild(xLabels);
+      }
+
+      // ---------- chart data prep ----------
+
+      function renderByDayChart(threads) {
+        var counts = {};
+        threads.forEach(function (t) {
+          if (!t.updatedAt) return;
+          var d = new Date(t.updatedAt);
+          var key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+          counts[key] = (counts[key] || 0) + 1;
+        });
+        var days = Object.keys(counts).sort();
+        var last30 = days.slice(-30);
+        var bars = last30.map(function (key) {
+          var d = new Date(key + "T00:00:00");
+          return {
+            label: d.toLocaleDateString(undefined, { month: "numeric", day: "numeric" }),
+            tooltipLabel: d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }),
+            value: counts[key],
+          };
+        });
+        renderBarChart(document.getElementById("chartByDay"), bars, {
+          emptyMessage: "No saved threads yet.",
+          formatValue: function (v) { return v + " thread" + (v === 1 ? "" : "s"); },
+        });
+      }
+
+      function renderByBotChart(stats) {
+        var names = Object.keys(stats.byBot).sort(function (a, b) {
+          return stats.byBot[b] - stats.byBot[a];
+        });
+        var TOP_N = 8;
+        var top = names.slice(0, TOP_N);
+        var rest = names.slice(TOP_N);
+        var bars = top.map(function (name) {
+          return { label: name, value: stats.byBot[name] };
+        });
+        if (rest.length) {
+          var restTotal = rest.reduce(function (sum, name) { return sum + stats.byBot[name]; }, 0);
+          bars.push({ label: "Other", tooltipLabel: rest.length + " other bots", value: restTotal });
+        }
+        renderBarChart(document.getElementById("chartByBot"), bars, {
+          showValueLabels: true,
+          emptyMessage: "No saved threads yet.",
+          formatValue: function (v) { return v + " thread" + (v === 1 ? "" : "s"); },
+        });
+      }
+
+      function renderByLengthChart(threads) {
+        var counts = {};
+        var maxTurns = 0;
+        threads.forEach(function (t) {
+          var turns = turnsOf(t);
+          maxTurns = Math.max(maxTurns, turns);
+        });
+        var CAP = 6;
+        threads.forEach(function (t) {
+          var turns = turnsOf(t);
+          var key = turns >= CAP ? CAP + "+" : String(turns);
+          counts[key] = (counts[key] || 0) + 1;
+        });
+        var labels = [];
+        for (var i = 1; i < CAP; i++) labels.push(String(i));
+        labels.push(CAP + "+");
+        var bars = labels
+          .filter(function (label) { return counts[label]; })
+          .map(function (label) {
+            return { label: label, tooltipLabel: label + " turn" + (label === "1" ? "" : "s"), value: counts[label] || 0 };
+          });
+        renderBarChart(document.getElementById("chartByLength"), bars, {
+          showValueLabels: true,
+          emptyMessage: "No saved threads yet.",
+          formatValue: function (v) { return v + " thread" + (v === 1 ? "" : "s"); },
+        });
+      }
+
+      // ---------- spotlight ----------
+
+      function renderSpotlight() {
+        if (!allThreads.length) {
+          spotlightCardEl.innerHTML = '<p class="spotlight-meta">No saved threads yet.</p>';
+          return;
+        }
+        var thread = allThreads[Math.floor(Math.random() * allThreads.length)];
+        var lastAssistant = (thread.messages || []).slice().reverse().find(function (m) { return m.role === "assistant"; });
+        spotlightCardEl.innerHTML = "";
+        var title = document.createElement("div");
+        title.className = "spotlight-title";
+        title.textContent = thread.title || "Untitled";
+        var meta = document.createElement("div");
+        meta.className = "spotlight-meta";
+        meta.textContent =
+          (thread.botName || "Unknown bot") +
+          " · " +
+          turnsOf(thread) +
+          " turn" +
+          (turnsOf(thread) === 1 ? "" : "s") +
+          " · " +
+          (thread.updatedAt ? new Date(thread.updatedAt).toLocaleString() : "unknown time");
+        var action = document.createElement("div");
+        action.className = "spotlight-action";
+        action.textContent = lastAssistant ? lastAssistant.content : "(no action recorded)";
+        spotlightCardEl.appendChild(title);
+        spotlightCardEl.appendChild(meta);
+        spotlightCardEl.appendChild(action);
+      }
+
+      rerollBtnEl.addEventListener("click", renderSpotlight);
+
+      // ---------- table ----------
+
+      function renderTranscript(thread) {
+        var wrap = document.createElement("div");
+        wrap.className = "transcript";
+        (thread.messages || []).forEach(function (m) {
+          var item = document.createElement("div");
+          item.className = "transcript-item";
+          var role = document.createElement("div");
+          role.className = "transcript-role";
+          role.textContent = m.role;
+          var content = document.createElement("div");
+          content.className = "transcript-content";
+          content.textContent = m.content;
+          item.appendChild(role);
+          item.appendChild(content);
+          wrap.appendChild(item);
+        });
+        return wrap;
+      }
+
+      function renderTable(threads) {
+        threadTableBodyEl.innerHTML = "";
+        var sorted = threads.slice().sort(function (a, b) {
+          return (b.updatedAt || 0) - (a.updatedAt || 0);
+        });
+        sorted.forEach(function (thread) {
+          var row = document.createElement("tr");
+          row.className = "thread-row";
+
+          var titleTd = document.createElement("td");
+          titleTd.className = "col-title";
+          titleTd.textContent = thread.title || "Untitled";
+
+          var botTd = document.createElement("td");
+          botTd.textContent = thread.botName || "Unknown";
+
+          var turnsTd = document.createElement("td");
+          turnsTd.textContent = turnsOf(thread);
+
+          var updatedTd = document.createElement("td");
+          updatedTd.textContent = thread.updatedAt ? new Date(thread.updatedAt).toLocaleString() : "—";
+
+          row.appendChild(titleTd);
+          row.appendChild(botTd);
+          row.appendChild(turnsTd);
+          row.appendChild(updatedTd);
+
+          var transcriptRow = document.createElement("tr");
+          transcriptRow.className = "transcript-row";
+          transcriptRow.hidden = true;
+          var transcriptTd = document.createElement("td");
+          transcriptTd.colSpan = 4;
+          transcriptRow.appendChild(transcriptTd);
+
+          var expanded = false;
+          row.addEventListener("click", function () {
+            expanded = !expanded;
+            if (expanded && !transcriptTd.firstChild) {
+              transcriptTd.appendChild(renderTranscript(thread));
+            }
+            transcriptRow.hidden = !expanded;
+          });
+
+          threadTableBodyEl.appendChild(row);
+          threadTableBodyEl.appendChild(transcriptRow);
+        });
+      }
+
+      // ---------- orchestration ----------
+
+      function renderAll() {
+        var stats = computeStats(allThreads);
+        renderKpis(stats);
+        renderByDayChart(allThreads);
+        renderByBotChart(stats);
+        renderByLengthChart(allThreads);
+        renderSpotlight();
+        renderTable(allThreads);
+      }
+
+      if (localStorage.getItem(SECRET_KEY)) {
+        loadData();
+      } else {
+        showGate();
+      }
+    </script>
+  </body>
+</html>

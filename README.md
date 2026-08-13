@@ -11,8 +11,9 @@ new gated page, put it here, not in a standalone project.
 - sunrise.html: secondary sunrise-only page (also served at /tree)
 - sunrise.png: sunrise image asset
 - investments.html + api/investments-auth.js + api/investments-content.js: passcode-gated `/investments` page
-- ai-assist.html + api/ai-assist-process.js + robot.png: passphrase-gated `/ai-assist` page (note-to-next-action tool, calls the Anthropic API)
-- package.json: dependencies for the serverless functions above (currently just `@anthropic-ai/sdk`, used by `api/ai-assist-process.js`)
+- ai-assist.html + api/ai-assist-process.js + api/ai-assist-bot-store.js + robot.png: passphrase-gated `/ai-assist` page (note-to-next-action tool, calls the Anthropic API, saved threads persisted to Vercel Blob)
+- frogger.html + api/frogger-data.js: passphrase-gated `/frogger` page, an experimental read-only stats/charts explorer over the same saved-thread data `/ai-assist` writes to Vercel Blob
+- package.json: dependencies for the serverless functions above (`@anthropic-ai/sdk` for `api/ai-assist-process.js`, `@vercel/blob` for the bot-store and frogger endpoints)
 - vercel.json: rewrite/header configuration mapping clean URLs (`/tree`, `/investments`, `/ai-assist`) to their HTML files, plus the catch-all that serves index.html for everything else
 
 ## Deploy
@@ -43,5 +44,6 @@ existing code before adding a third variant.
 - A `401` response clears the stored passphrase client-side and re-prompts.
 - Weaker: the secret sits in `localStorage` (readable by any script on the page) and the comparison isn't timing-safe. Acceptable for a low-stakes personal tool; **do not** reuse this pattern for anything more sensitive than `/investments` without upgrading to Pattern A.
 - Required env vars: `AI_ASSIST_SECRET` (plus `ANTHROPIC_API_KEY` for the Claude call itself).
+- `/frogger` reuses this exact pattern and secret (same `localStorage` key, same `X-AI-Assist-Secret` header, same `AI_ASSIST_SECRET` check server-side) rather than introducing a second secret — it doesn't expose anything a holder of that secret couldn't already read via `api/ai-assist-bot-store.js`'s unauthenticated-by-id GET.
 
 Both patterns' secrets are set via `vercel env add <NAME> production --sensitive` (or the Vercel dashboard) on this project — never committed to the repo.
