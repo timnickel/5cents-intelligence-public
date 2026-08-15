@@ -706,6 +706,14 @@
         color: var(--muted);
       }
 
+      .thread-list-toggle {
+        display: block;
+        width: 100%;
+        margin: 0;
+        padding: 8px 12px;
+        text-align: center;
+      }
+
       .page-version {
         margin: 28px 0 0;
         padding-top: 14px;
@@ -902,7 +910,7 @@
               <p class="preview-caption">A peek a few steps ahead, not just the next one.</p>
             </div>
           </div>
-          <p class="page-version">v2026.08.14.1.0</p>
+          <p class="page-version">v2026.08.14.2.0</p>
         </div>
         <div id="debug">
           <div class="debug-header">
@@ -967,6 +975,7 @@
       var BOT_NAME_KEY = "ai-assist-bot-name";
       var THREADS_LIMIT = 50;
       var TITLE_LENGTH = 60;
+      var THREADS_COLLAPSED_COUNT = 3;
       var MASCOT_STATES = {
         idle: "/frog-idle.png",
         thinking: "/frog-thinking.png",
@@ -1008,6 +1017,7 @@
       var conversation = [];
       var currentThreadId = null;
       var currentMemory = "";
+      var threadsExpanded = false;
 
       function logDebug(label, data) {
         var entry = "[" + new Date().toLocaleTimeString() + "] " + label;
@@ -1144,7 +1154,8 @@
           threadListEl.innerHTML = '<p class="history-empty">No saved threads yet.</p>';
           return;
         }
-        threadListEl.innerHTML = threads
+        var visibleThreads = threadsExpanded ? threads : threads.slice(0, THREADS_COLLAPSED_COUNT);
+        var html = visibleThreads
           .map(function (thread) {
             var activeClass = thread.id === currentThreadId ? " active" : "";
             var saveLabel = thread.savedRemote ? "Saved" : "Save";
@@ -1161,6 +1172,13 @@
             );
           })
           .join("");
+
+        if (threads.length > THREADS_COLLAPSED_COUNT) {
+          var toggleLabel = threadsExpanded ? "Show less" : "Show " + (threads.length - THREADS_COLLAPSED_COUNT) + " more";
+          html += '<button type="button" id="threadsToggle" class="secondary small thread-list-toggle">' + toggleLabel + "</button>";
+        }
+
+        threadListEl.innerHTML = html;
 
         Array.prototype.forEach.call(threadListEl.querySelectorAll(".thread-item"), function (el) {
           el.addEventListener("click", function () {
@@ -1179,6 +1197,14 @@
             saveThreadToBot(el.getAttribute("data-id"), el);
           });
         });
+
+        var threadsToggleEl = document.getElementById("threadsToggle");
+        if (threadsToggleEl) {
+          threadsToggleEl.addEventListener("click", function () {
+            threadsExpanded = !threadsExpanded;
+            renderThreads();
+          });
+        }
       }
 
       function saveThreadToBot(id, buttonEl) {

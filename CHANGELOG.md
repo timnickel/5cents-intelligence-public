@@ -4,6 +4,9 @@ All notable changes to this repository should be recorded in this file.
 
 ## [Unreleased]
 
+### 2026.08.14.2.0
+- `/ai-assist`'s local "Threads" list now shows only the 3 most recently updated threads by default, with a "Show N more" / "Show less" toggle to reveal the rest — "Saved to bot" is unaffected.
+
 ### 2026.08.14.1.0
 - Added memory export to `/ai-assist` (export the current thread) and `/frogger` (export every saved thread), with checkboxes for memory summary / full transcript, an optional free-text field describing the desired formatting, and a choice of file type (txt, md, json, csv).
 - Added `api/memory-export.js`: for `txt`/`md` it sends the selected thread data plus the user's formatting instructions to Claude and returns the formatted file content; for `json`/`csv` it serializes deterministically without a model call, so those formats always stay valid regardless of instructions.
