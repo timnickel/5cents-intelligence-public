@@ -427,6 +427,7 @@
         }
         for (var i = 0; i < events.length; i++) {
           var li = document.createElement("li");
+          li.dataset.id = events[i].id;
 
           var mainDiv = document.createElement("div");
           mainDiv.className = "event-main";
@@ -457,22 +458,16 @@
           toggleBtn.className = "event-toggle" + (events[i].isDuration ? " active" : "");
           toggleBtn.textContent = events[i].isDuration ? "Duration ✓" : "Mark as duration";
           toggleBtn.title = "Mark whether this entry is when the pump stopped (its run duration) rather than a fresh run starting after idle time";
-          toggleBtn.addEventListener("click", (function (event) {
-            return function () {
-              toggleDuration(event);
-            };
-          })(events[i]));
+          toggleBtn.dataset.action = "toggle";
+          toggleBtn.dataset.id = events[i].id;
           actionsDiv.appendChild(toggleBtn);
 
           var deleteBtn = document.createElement("button");
           deleteBtn.type = "button";
           deleteBtn.className = "event-delete";
           deleteBtn.textContent = "Delete";
-          deleteBtn.addEventListener("click", (function (event) {
-            return function () {
-              deleteEvent(event);
-            };
-          })(events[i]));
+          deleteBtn.dataset.action = "delete";
+          deleteBtn.dataset.id = events[i].id;
           actionsDiv.appendChild(deleteBtn);
 
           li.appendChild(actionsDiv);
@@ -819,16 +814,19 @@
           });
       }
 
-      function deleteEvent(event) {
+      function deleteEvent(id) {
         var secret = getSecret();
         if (!secret) return;
 
-        var confirmed = window.confirm("Delete the run logged " + formatTimestamp(event.timestamp) + "?");
+        var target = events.find(function (e) { return e.id === id; });
+        if (!target) return;
+
+        var confirmed = window.confirm("Delete the run logged " + formatTimestamp(target.timestamp) + "?");
         if (!confirmed) return;
 
         showStatus("Deleting...", false);
 
-        fetch("/api/sump-pump-data?id=" + encodeURIComponent(event.id), {
+        fetch("/api/sump-pump-data?id=" + encodeURIComponent(id), {
           method: "DELETE",
           headers: { "X-AI-Assist-Secret": secret },
         })
@@ -847,7 +845,7 @@
               showStatus("Could not delete that run.", true);
               return;
             }
-            events = events.filter(function (e) { return e.id !== event.id; });
+            events = events.filter(function (e) { return e.id !== id; });
             clearStatus();
             renderAll();
           })
@@ -856,17 +854,20 @@
           });
       }
 
-      function toggleDuration(event) {
+      function toggleDuration(id) {
         var secret = getSecret();
         if (!secret) return;
 
-        var nextValue = !event.isDuration;
+        var target = events.find(function (e) { return e.id === id; });
+        if (!target) return;
+
+        var nextValue = !target.isDuration;
         showStatus("Saving...", false);
 
         fetch("/api/sump-pump-data", {
           method: "PATCH",
           headers: { "X-AI-Assist-Secret": secret, "Content-Type": "application/json" },
-          body: JSON.stringify({ id: event.id, isDuration: nextValue }),
+          body: JSON.stringify({ id: id, isDuration: nextValue }),
         })
           .then(function (response) {
             return response.text().then(function (rawText) {
@@ -893,6 +894,17 @@
             showStatus("Network error. Try again.", true);
           });
       }
+
+      historyEl.addEventListener("click", function (evt) {
+        var btn = evt.target.closest("button[data-action]");
+        if (!btn || !historyEl.contains(btn)) return;
+        var id = btn.dataset.id;
+        if (btn.dataset.action === "delete") {
+          deleteEvent(id);
+        } else if (btn.dataset.action === "toggle") {
+          toggleDuration(id);
+        }
+      });
 
       unlockBtnEl.addEventListener("click", loadData);
       logBtnEl.addEventListener("click", logRun);

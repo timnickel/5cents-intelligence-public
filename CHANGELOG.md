@@ -4,6 +4,10 @@ All notable changes to this repository should be recorded in this file.
 
 ## [Unreleased]
 
+### 2026.08.15.6.0
+- `/sump-pump` history rows now carry an explicit `data-id` on the `<li>` and on each action button, with a single delegated click listener on the list that looks up the row by id in the current `events` array at click time — replacing the per-button closures, so the row a Delete/duration click acts on is always verifiable directly in the DOM rather than inferred from render-time bindings.
+- Hardened `api/sump-pump-data.js`'s per-id `DELETE`: it now looks up the blob's exact pathname via `list()` and verifies a match before deleting (404 if not found), instead of assuming a hand-constructed path string matches what's actually stored.
+
 ### 2026.08.15.5.0
 - Fixed `/sump-pump`'s "Time between runs" chart gridline labels: whole-hour rounding (`Math.round(v) + "h"`) collapsed short intervals to misleading repeats like "0h, 0h, 1h"; gridlines now show `h:mm` (e.g. "0:15", "3:45") so sub-hour trends stay readable.
 

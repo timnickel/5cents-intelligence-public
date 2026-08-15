@@ -84,11 +84,18 @@ module.exports = async (req, res) => {
       }
 
       const id = req.query?.id;
-      if (!id) {
+      if (!id || typeof id !== "string") {
         res.status(400).json({ error: "id is required" });
         return;
       }
-      await del(PREFIX + id + ".json");
+      const expectedPathname = PREFIX + id + ".json";
+      const { blobs: matches } = await list({ prefix: expectedPathname });
+      const match = matches.find((blob) => blob.pathname === expectedPathname);
+      if (!match) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      await del(match.pathname);
       res.status(200).json({ ok: true });
       return;
     }
