@@ -3,7 +3,9 @@
   "rewrites": [
     { "source": "/investments", "destination": "/investments.html" },
     { "source": "/ai-assist", "destination": "/ai-assist.html" },
+    { "source": "/frogger", "destination": "/frogger.html" },
     { "source": "/birthday", "destination": "/birthday.html" },
+    { "source": "/sump-pump", "destination": "/sump-pump.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "headers": [
@@ -16,7 +18,15 @@
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     },
     {
+      "source": "/frogger",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
       "source": "/birthday",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/sump-pump",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
   ]

@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Sump Pump Log · 5 Cents Intelligence</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #06101d;
+        --panel: rgba(9, 18, 33, 0.76);
+        --text: #f8fafc;
+        --muted: #94a3b8;
+        --line: rgba(148, 163, 184, 0.14);
+        --cyan: #7dd3fc;
+        --green: #34d399;
+        --red: #f87171;
+        --series: #3987e5;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", Arial, sans-serif;
+        background:
+          radial-gradient(circle at 20% 10%, rgba(56, 189, 248, 0.14), transparent 24%),
+          radial-gradient(circle at 80% 30%, rgba(52, 211, 153, 0.08), transparent 30%),
+          linear-gradient(180deg, #06101d 0%, #081425 44%, #0d1728 100%);
+        color: var(--text);
+      }
+
+      main {
+        width: min(680px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 32px 0 48px;
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: linear-gradient(180deg, rgba(10, 18, 32, 0.9), rgba(8, 16, 29, 0.76));
+        box-shadow: 0 30px 90px rgba(2, 6, 23, 0.32);
+        padding: 28px;
+        margin-bottom: 20px;
+      }
+
+      .eyebrow {
+        color: var(--cyan);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        margin: 0 0 4px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.5rem, 3.5vw, 1.9rem);
+        letter-spacing: -0.02em;
+      }
+
+      .since {
+        margin-top: 18px;
+        font-size: 2.4rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .since-label {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      button {
+        appearance: none;
+        border: none;
+        border-radius: 14px;
+        background: linear-gradient(180deg, #38bdf8, #0ea5e9);
+        color: #04121f;
+        font-weight: 700;
+        font-size: 1.05rem;
+        padding: 16px 24px;
+        width: 100%;
+        margin-top: 22px;
+        cursor: pointer;
+        box-shadow: 0 12px 30px rgba(14, 165, 233, 0.28);
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+
+      button.secondary {
+        background: transparent;
+        border: 1px solid var(--line);
+        color: var(--muted);
+        box-shadow: none;
+        font-size: 0.85rem;
+        font-weight: 600;
+        padding: 8px 14px;
+        width: auto;
+        margin-top: 0;
+      }
+
+      #status {
+        margin-top: 14px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      #status.error {
+        color: var(--red);
+      }
+
+      h2 {
+        margin: 0 0 14px;
+        font-size: 1.05rem;
+        color: #e2e8f0;
+      }
+
+      ul#history {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      #history li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      #history li:last-child {
+        border-bottom: none;
+      }
+
+      .event-time {
+        color: var(--text);
+        font-size: 0.92rem;
+      }
+
+      .event-gap {
+        color: var(--muted);
+        font-size: 0.82rem;
+        white-space: nowrap;
+      }
+
+      .event-main {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .event-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: none;
+      }
+
+      .event-toggle,
+      .event-delete {
+        appearance: none;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: transparent;
+        color: var(--muted);
+        width: auto;
+        margin: 0;
+        padding: 4px 9px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        box-shadow: none;
+        flex: none;
+      }
+
+      .event-toggle:hover {
+        color: var(--green);
+        border-color: var(--green);
+      }
+
+      .event-toggle.active {
+        color: #04120c;
+        background: var(--green);
+        border-color: var(--green);
+      }
+
+      .event-delete:hover {
+        color: var(--red);
+        border-color: var(--red);
+      }
+
+      .empty {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      /* Trend charts */
+      .line-chart-svg {
+        display: block;
+        width: 100%;
+        height: 150px;
+      }
+
+      .line-chart-grid {
+        stroke: var(--line);
+        stroke-width: 1;
+      }
+
+      .line-chart-axis-label {
+        fill: var(--muted);
+        font-size: 9px;
+      }
+
+      .line-chart-path {
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .line-chart-hit {
+        fill: transparent;
+        cursor: pointer;
+      }
+
+      .line-chart-hit:focus-visible {
+        outline: 2px solid var(--cyan);
+        outline-offset: 1px;
+      }
+
+      .chart-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 150px;
+        color: var(--muted);
+        font-size: 0.8rem;
+        text-align: center;
+        padding: 0 16px;
+      }
+
+      #tooltip {
+        position: fixed;
+        z-index: 1000;
+        pointer-events: none;
+        background: #0b1626;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 6px 10px;
+        font-size: 0.76rem;
+        box-shadow: 0 12px 30px rgba(2, 6, 23, 0.5);
+        transform: translate(-50%, -100%);
+        white-space: nowrap;
+      }
+
+      #tooltip .tt-value {
+        color: var(--text);
+        font-weight: 700;
+      }
+
+      #tooltip .tt-label {
+        color: var(--muted);
+        margin-top: 2px;
+      }
+
+      #gate {
+        text-align: center;
+      }
+
+      #gate button {
+        max-width: 220px;
+        margin: 18px auto 0;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="card" id="gate">
+        <div class="eyebrow">Private tool</div>
+        <h1>Sump Pump Log</h1>
+        <p class="since-label" style="margin-top: 12px;">Enter your passphrase to unlock.</p>
+        <button type="button" id="unlockBtn">Unlock</button>
+      </div>
+
+      <div id="content" hidden>
+        <div class="card">
+          <div class="eyebrow">Sump Pump Log</div>
+          <h1>Time since last run</h1>
+          <div class="since" id="sinceValue">&mdash;</div>
+          <div class="since-label" id="lastRunLabel"></div>
+          <button type="button" id="logBtn">Log a run now</button>
+          <button type="button" id="resetBtn" class="secondary" style="margin-top: 12px;">Reset counter</button>
+          <div id="status" hidden></div>
+        </div>
+
+        <div class="card">
+          <h2>Trend &middot; time between runs</h2>
+          <div id="intervalChart"></div>
+        </div>
+
+        <div class="card">
+          <h2>Trend &middot; run duration</h2>
+          <div id="durationChart"></div>
+        </div>
+
+        <div class="card">
+          <h2>History</h2>
+          <ul id="history"></ul>
+        </div>
+      </div>
+    </main>
+    <div id="tooltip" hidden></div>
+    <script>
+      var SECRET_KEY = "ai-assist-secret";
+      var gateEl = document.getElementById("gate");
+      var unlockBtnEl = document.getElementById("unlockBtn");
+      var contentEl = document.getElementById("content");
+      var statusEl = document.getElementById("status");
+      var logBtnEl = document.getElementById("logBtn");
+      var resetBtnEl = document.getElementById("resetBtn");
+      var sinceValueEl = document.getElementById("sinceValue");
+      var lastRunLabelEl = document.getElementById("lastRunLabel");
+      var historyEl = document.getElementById("history");
+      var tooltipEl = document.getElementById("tooltip");
+
+      var events = [];
+      var tickTimer = null;
+
+      function getSecret() {
+        var secret = localStorage.getItem(SECRET_KEY);
+        if (!secret) {
+          secret = window.prompt("Enter your passphrase:");
+          if (secret) localStorage.setItem(SECRET_KEY, secret);
+        }
+        return secret;
+      }
+
+      function showStatus(message, isError) {
+        statusEl.hidden = false;
+        statusEl.className = isError ? "error" : "";
+        statusEl.textContent = message;
+      }
+
+      function clearStatus() {
+        statusEl.hidden = true;
+      }
+
+      function showGate() {
+        gateEl.hidden = false;
+        contentEl.hidden = true;
+      }
+
+      function formatDuration(ms, showMillis) {
+        var totalMs = Math.max(0, ms);
+        var days = Math.floor(totalMs / 86400000);
+        var hours = Math.floor((totalMs % 86400000) / 3600000);
+        var minutes = Math.floor((totalMs % 3600000) / 60000);
+        var seconds = Math.floor((totalMs % 60000) / 1000);
+        var millis = Math.floor(totalMs % 1000);
+
+        if (showMillis) {
+          var secStr = seconds + "." + String(millis).padStart(3, "0") + "s";
+          if (days > 0) return days + "d " + hours + "h " + minutes + "m " + secStr;
+          if (hours > 0) return hours + "h " + minutes + "m " + secStr;
+          if (minutes > 0) return minutes + "m " + secStr;
+          return secStr;
+        }
+
+        if (days > 0) return days + "d " + hours + "h";
+        if (hours > 0) return hours + "h " + minutes + "m";
+        if (minutes > 0) return minutes + "m " + seconds + "s";
+        return seconds + "s";
+      }
+
+      function formatTimestamp(ts) {
+        var d = new Date(ts);
+        return d.toLocaleString(undefined, {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        });
+      }
+
+      function renderSince() {
+        if (!events.length) {
+          sinceValueEl.textContent = "No runs yet";
+          lastRunLabelEl.textContent = "";
+          return;
+        }
+        var lastTs = events[0].timestamp;
+        sinceValueEl.textContent = formatDuration(Date.now() - lastTs, true);
+        lastRunLabelEl.textContent = "Last ran " + formatTimestamp(lastTs);
+      }
+
+      function renderHistory() {
+        historyEl.innerHTML = "";
+        if (!events.length) {
+          var empty = document.createElement("li");
+          empty.className = "empty";
+          empty.textContent = "No runs logged yet.";
+          historyEl.appendChild(empty);
+          return;
+        }
+        for (var i = 0; i < events.length; i++) {
+          var li = document.createElement("li");
+
+          var mainDiv = document.createElement("div");
+          mainDiv.className = "event-main";
+
+          var timeSpan = document.createElement("span");
+          timeSpan.className = "event-time";
+          timeSpan.textContent = formatTimestamp(events[i].timestamp);
+          mainDiv.appendChild(timeSpan);
+
+          var gapSpan = document.createElement("span");
+          gapSpan.className = "event-gap";
+          if (i < events.length - 1) {
+            var gapMs = events[i].timestamp - events[i + 1].timestamp;
+            var gapKind = events[i].isDuration ? " ran for" : " since previous run";
+            gapSpan.textContent = formatDuration(gapMs) + gapKind;
+          } else {
+            gapSpan.textContent = "first logged run";
+          }
+          mainDiv.appendChild(gapSpan);
+
+          li.appendChild(mainDiv);
+
+          var actionsDiv = document.createElement("div");
+          actionsDiv.className = "event-actions";
+
+          var toggleBtn = document.createElement("button");
+          toggleBtn.type = "button";
+          toggleBtn.className = "event-toggle" + (events[i].isDuration ? " active" : "");
+          toggleBtn.textContent = events[i].isDuration ? "Duration ✓" : "Mark as duration";
+          toggleBtn.title = "Mark whether this entry is when the pump stopped (its run duration) rather than a fresh run starting after idle time";
+          toggleBtn.addEventListener("click", (function (event) {
+            return function () {
+              toggleDuration(event);
+            };
+          })(events[i]));
+          actionsDiv.appendChild(toggleBtn);
+
+          var deleteBtn = document.createElement("button");
+          deleteBtn.type = "button";
+          deleteBtn.className = "event-delete";
+          deleteBtn.textContent = "Delete";
+          deleteBtn.addEventListener("click", (function (event) {
+            return function () {
+              deleteEvent(event);
+            };
+          })(events[i]));
+          actionsDiv.appendChild(deleteBtn);
+
+          li.appendChild(actionsDiv);
+
+          historyEl.appendChild(li);
+        }
+      }
+
+      // ---------- trend charts ----------
+
+      function niceMax(value) {
+        if (value <= 0) return 1;
+        var magnitude = Math.pow(10, Math.floor(Math.log10(value)));
+        var normalized = value / magnitude;
+        var step = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+        return step * magnitude;
+      }
+
+      function showTooltip(targetEl, labelText, valueText) {
+        var rect = targetEl.getBoundingClientRect();
+        tooltipEl.innerHTML = "";
+        var valueDiv = document.createElement("div");
+        valueDiv.className = "tt-value";
+        valueDiv.textContent = valueText;
+        var labelDiv = document.createElement("div");
+        labelDiv.className = "tt-label";
+        labelDiv.textContent = labelText;
+        tooltipEl.appendChild(valueDiv);
+        tooltipEl.appendChild(labelDiv);
+        tooltipEl.style.left = rect.left + rect.width / 2 + "px";
+        tooltipEl.style.top = rect.top - 6 + "px";
+        tooltipEl.hidden = false;
+      }
+
+      function hideTooltip() {
+        tooltipEl.hidden = true;
+      }
+
+      var SVG_NS = "http://www.w3.org/2000/svg";
+
+      function formatAxisDate(ts) {
+        return new Date(ts).toLocaleDateString(undefined, { month: "numeric", day: "numeric" });
+      }
+
+      function renderLineChart(containerEl, points, opts) {
+        opts = opts || {};
+        containerEl.innerHTML = "";
+        if (!points.length) {
+          var empty = document.createElement("div");
+          empty.className = "chart-empty";
+          empty.textContent = opts.emptyMessage || "No data yet.";
+          containerEl.appendChild(empty);
+          return;
+        }
+
+        var width = 600;
+        var height = 150;
+        var padLeft = 30;
+        var padRight = 10;
+        var padTop = 12;
+        var padBottom = 20;
+        var plotW = width - padLeft - padRight;
+        var plotH = height - padTop - padBottom;
+
+        var minX = points[0].x;
+        var maxX = points[points.length - 1].x;
+        if (minX === maxX) {
+          minX -= 3600000;
+          maxX += 3600000;
+        }
+
+        var maxY = niceMax(Math.max.apply(null, points.map(function (p) { return p.y; })));
+
+        function xPos(x) {
+          return padLeft + ((x - minX) / (maxX - minX)) * plotW;
+        }
+        function yPos(y) {
+          return padTop + plotH - (maxY > 0 ? (y / maxY) * plotH : 0);
+        }
+
+        var svg = document.createElementNS(SVG_NS, "svg");
+        svg.setAttribute("viewBox", "0 0 " + width + " " + height);
+        svg.setAttribute("class", "line-chart-svg");
+        svg.setAttribute("role", "img");
+        if (opts.ariaLabel) svg.setAttribute("aria-label", opts.ariaLabel);
+
+        [0, 0.5, 1].forEach(function (fraction) {
+          var y = padTop + plotH - fraction * plotH;
+          var gridLine = document.createElementNS(SVG_NS, "line");
+          gridLine.setAttribute("x1", padLeft);
+          gridLine.setAttribute("x2", width - padRight);
+          gridLine.setAttribute("y1", y);
+          gridLine.setAttribute("y2", y);
+          gridLine.setAttribute("class", "line-chart-grid");
+          svg.appendChild(gridLine);
+
+          var label = document.createElementNS(SVG_NS, "text");
+          label.setAttribute("x", 0);
+          label.setAttribute("y", y - 3);
+          label.setAttribute("class", "line-chart-axis-label");
+          label.textContent = opts.formatAxis ? opts.formatAxis(maxY * fraction) : String(Math.round(maxY * fraction));
+          svg.appendChild(label);
+        });
+
+        var d = points
+          .map(function (p, i) {
+            return (i === 0 ? "M" : "L") + xPos(p.x).toFixed(1) + " " + yPos(p.y).toFixed(1);
+          })
+          .join(" ");
+        var path = document.createElementNS(SVG_NS, "path");
+        path.setAttribute("d", d);
+        path.setAttribute("class", "line-chart-path");
+        path.style.stroke = opts.color || "var(--series)";
+        svg.appendChild(path);
+
+        points.forEach(function (p) {
+          var cx = xPos(p.x);
+          var cy = yPos(p.y);
+
+          var hit = document.createElementNS(SVG_NS, "circle");
+          hit.setAttribute("cx", cx);
+          hit.setAttribute("cy", cy);
+          hit.setAttribute("r", 10);
+          hit.setAttribute("class", "line-chart-hit");
+          hit.setAttribute("tabindex", "0");
+
+          var dot = document.createElementNS(SVG_NS, "circle");
+          dot.setAttribute("cx", cx);
+          dot.setAttribute("cy", cy);
+          dot.setAttribute("r", 3.5);
+          dot.style.fill = opts.color || "var(--series)";
+
+          var tooltipValue = opts.formatValue ? opts.formatValue(p.y) : String(p.y);
+          hit.addEventListener("pointerenter", function () {
+            showTooltip(hit, p.tooltipLabel, tooltipValue);
+          });
+          hit.addEventListener("focus", function () {
+            showTooltip(hit, p.tooltipLabel, tooltipValue);
+          });
+          hit.addEventListener("pointerleave", hideTooltip);
+          hit.addEventListener("blur", hideTooltip);
+
+          svg.appendChild(hit);
+          svg.appendChild(dot);
+        });
+
+        var startLabel = document.createElementNS(SVG_NS, "text");
+        startLabel.setAttribute("x", padLeft);
+        startLabel.setAttribute("y", height - 4);
+        startLabel.setAttribute("class", "line-chart-axis-label");
+        startLabel.textContent = formatAxisDate(minX);
+        svg.appendChild(startLabel);
+
+        var endLabel = document.createElementNS(SVG_NS, "text");
+        endLabel.setAttribute("x", width - padRight);
+        endLabel.setAttribute("y", height - 4);
+        endLabel.setAttribute("class", "line-chart-axis-label");
+        endLabel.setAttribute("text-anchor", "end");
+        endLabel.textContent = formatAxisDate(maxX);
+        svg.appendChild(endLabel);
+
+        containerEl.appendChild(svg);
+      }
+
+      function buildGapSeries(wantDuration) {
+        // Oldest-first; a run only has a gap once there's an earlier run to
+        // measure from, so the first-ever run is skipped rather than plotted
+        // as a fabricated zero. Each gap is classified by whether the later
+        // (newer) run in the pair was marked "duration" (the pump stopping
+        // after running) or not (a fresh run starting after idle time).
+        var chronological = events.slice().sort(function (a, b) { return a.timestamp - b.timestamp; });
+        var points = [];
+        for (var i = 1; i < chronological.length; i++) {
+          if (!!chronological[i].isDuration !== wantDuration) continue;
+          points.push({
+            x: chronological[i].timestamp,
+            y: chronological[i].timestamp - chronological[i - 1].timestamp,
+            tooltipLabel: formatTimestamp(chronological[i].timestamp),
+          });
+        }
+        return points;
+      }
+
+      function renderTrend() {
+        var intervalPoints = buildGapSeries(false).map(function (p) {
+          return { x: p.x, y: p.y / 3600000, tooltipLabel: p.tooltipLabel };
+        });
+        var durationPoints = buildGapSeries(true).map(function (p) {
+          return { x: p.x, y: p.y / 60000, tooltipLabel: p.tooltipLabel };
+        });
+
+        renderLineChart(document.getElementById("intervalChart"), intervalPoints, {
+          emptyMessage: "Log at least two runs to see this trend.",
+          color: "var(--series)",
+          ariaLabel: "Time between runs trend",
+          formatAxis: function (v) { return Math.round(v) + "h"; },
+          formatValue: function (v) { return formatDuration(v * 3600000); },
+        });
+
+        renderLineChart(document.getElementById("durationChart"), durationPoints, {
+          emptyMessage: 'Mark a row "duration" to see this trend.',
+          color: "var(--green)",
+          ariaLabel: "Run duration trend",
+          formatAxis: function (v) { return Math.round(v) + "m"; },
+          formatValue: function (v) { return formatDuration(v * 60000); },
+        });
+      }
+
+      function renderAll() {
+        renderSince();
+        renderHistory();
+        renderTrend();
+      }
+
+      function startTicking() {
+        if (tickTimer) clearInterval(tickTimer);
+        tickTimer = setInterval(renderSince, 47);
+      }
+
+      function loadData() {
+        var secret = getSecret();
+        if (!secret) return;
+
+        gateEl.hidden = true;
+        contentEl.hidden = false;
+        showStatus("Loading history...", false);
+
+        fetch("/api/sump-pump-data", { headers: { "X-AI-Assist-Secret": secret } })
+          .then(function (response) {
+            return response.text().then(function (rawText) {
+              return { status: response.status, ok: response.ok, rawText: rawText };
+            });
+          })
+          .then(function (result) {
+            if (result.status === 401) {
+              localStorage.removeItem(SECRET_KEY);
+              showGate();
+              showStatus("");
+              return;
+            }
+            if (result.status === 503) {
+              showStatus("Blob storage isn't configured on this deployment yet.", true);
+              return;
+            }
+            if (!result.ok) {
+              showStatus("Could not load history.", true);
+              return;
+            }
+            var data;
+            try {
+              data = result.rawText ? JSON.parse(result.rawText) : [];
+            } catch (e) {
+              showStatus("Received an invalid response from the server.", true);
+              return;
+            }
+            events = Array.isArray(data) ? data : [];
+            clearStatus();
+            renderAll();
+            startTicking();
+          })
+          .catch(function () {
+            showStatus("Network error. Try again.", true);
+          });
+      }
+
+      function logRun() {
+        var secret = getSecret();
+        if (!secret) return;
+
+        logBtnEl.disabled = true;
+        showStatus("Logging...", false);
+
+        fetch("/api/sump-pump-data", {
+          method: "POST",
+          headers: { "X-AI-Assist-Secret": secret },
+        })
+          .then(function (response) {
+            return response.text().then(function (rawText) {
+              return { status: response.status, ok: response.ok, rawText: rawText };
+            });
+          })
+          .then(function (result) {
+            logBtnEl.disabled = false;
+            if (result.status === 401) {
+              localStorage.removeItem(SECRET_KEY);
+              showGate();
+              return;
+            }
+            if (!result.ok) {
+              showStatus("Could not log the run.", true);
+              return;
+            }
+            var event = JSON.parse(result.rawText);
+            events.unshift(event);
+            clearStatus();
+            renderAll();
+          })
+          .catch(function () {
+            logBtnEl.disabled = false;
+            showStatus("Network error. Try again.", true);
+          });
+      }
+
+      function resetCounter() {
+        var secret = getSecret();
+        if (!secret) return;
+        if (!events.length) return;
+
+        var confirmed = window.confirm(
+          "Delete all " + events.length + " logged run(s)? This can't be undone."
+        );
+        if (!confirmed) return;
+
+        resetBtnEl.disabled = true;
+        showStatus("Resetting...", false);
+
+        fetch("/api/sump-pump-data?all=1", {
+          method: "DELETE",
+          headers: { "X-AI-Assist-Secret": secret },
+        })
+          .then(function (response) {
+            return response.text().then(function (rawText) {
+              return { status: response.status, ok: response.ok, rawText: rawText };
+            });
+          })
+          .then(function (result) {
+            resetBtnEl.disabled = false;
+            if (result.status === 401) {
+              localStorage.removeItem(SECRET_KEY);
+              showGate();
+              return;
+            }
+            if (!result.ok) {
+              showStatus("Could not reset the counter.", true);
+              return;
+            }
+            events = [];
+            clearStatus();
+            renderAll();
+          })
+          .catch(function () {
+            resetBtnEl.disabled = false;
+            showStatus("Network error. Try again.", true);
+          });
+      }
+
+      function deleteEvent(event) {
+        var secret = getSecret();
+        if (!secret) return;
+
+        var confirmed = window.confirm("Delete the run logged " + formatTimestamp(event.timestamp) + "?");
+        if (!confirmed) return;
+
+        showStatus("Deleting...", false);
+
+        fetch("/api/sump-pump-data?id=" + encodeURIComponent(event.id), {
+          method: "DELETE",
+          headers: { "X-AI-Assist-Secret": secret },
+        })
+          .then(function (response) {
+            return response.text().then(function (rawText) {
+              return { status: response.status, ok: response.ok, rawText: rawText };
+            });
+          })
+          .then(function (result) {
+            if (result.status === 401) {
+              localStorage.removeItem(SECRET_KEY);
+              showGate();
+              return;
+            }
+            if (!result.ok) {
+              showStatus("Could not delete that run.", true);
+              return;
+            }
+            events = events.filter(function (e) { return e.id !== event.id; });
+            clearStatus();
+            renderAll();
+          })
+          .catch(function () {
+            showStatus("Network error. Try again.", true);
+          });
+      }
+
+      function toggleDuration(event) {
+        var secret = getSecret();
+        if (!secret) return;
+
+        var nextValue = !event.isDuration;
+        showStatus("Saving...", false);
+
+        fetch("/api/sump-pump-data", {
+          method: "PATCH",
+          headers: { "X-AI-Assist-Secret": secret, "Content-Type": "application/json" },
+          body: JSON.stringify({ id: event.id, isDuration: nextValue }),
+        })
+          .then(function (response) {
+            return response.text().then(function (rawText) {
+              return { status: response.status, ok: response.ok, rawText: rawText };
+            });
+          })
+          .then(function (result) {
+            if (result.status === 401) {
+              localStorage.removeItem(SECRET_KEY);
+              showGate();
+              return;
+            }
+            if (!result.ok) {
+              showStatus("Could not update that run.", true);
+              return;
+            }
+            var updated = JSON.parse(result.rawText);
+            var idx = events.findIndex(function (e) { return e.id === updated.id; });
+            if (idx !== -1) events[idx] = updated;
+            clearStatus();
+            renderAll();
+          })
+          .catch(function () {
+            showStatus("Network error. Try again.", true);
+          });
+      }
+
+      unlockBtnEl.addEventListener("click", loadData);
+      logBtnEl.addEventListener("click", logRun);
+      resetBtnEl.addEventListener("click", resetCounter);
+
+      if (localStorage.getItem(SECRET_KEY)) {
+        loadData();
+      }
+    </script>
+  </body>
+</html>
