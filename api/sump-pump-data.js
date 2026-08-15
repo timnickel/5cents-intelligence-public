@@ -42,6 +42,28 @@ module.exports = async (req, res) => {
       return;
     }
 
+    if (req.method === "PATCH") {
+      const id = req.body?.id;
+      if (!id || typeof id !== "string") {
+        res.status(400).json({ error: "id is required" });
+        return;
+      }
+      const existing = await readBlob(PREFIX + id + ".json");
+      if (!existing) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      const updated = Object.assign({}, existing, { isDuration: !!req.body?.isDuration });
+      await put(PREFIX + id + ".json", JSON.stringify(updated), {
+        access: "private",
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        contentType: "application/json",
+      });
+      res.status(200).json(updated);
+      return;
+    }
+
     if (req.method === "GET") {
       const { blobs } = await list({ prefix: PREFIX });
       const events = await Promise.all(blobs.map((blob) => readBlob(blob.pathname)));
