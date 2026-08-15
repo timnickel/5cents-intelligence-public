@@ -68,6 +68,7 @@
         font-size: 2.4rem;
         font-weight: 700;
         letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
       }
 
       .since-label {
@@ -189,6 +190,7 @@
           <div class="since" id="sinceValue">&mdash;</div>
           <div class="since-label" id="lastRunLabel"></div>
           <button type="button" id="logBtn">Log a run now</button>
+          <button type="button" id="resetBtn" class="secondary" style="margin-top: 12px;">Reset counter</button>
           <div id="status" hidden></div>
         </div>
 
@@ -205,6 +207,7 @@
       var contentEl = document.getElementById("content");
       var statusEl = document.getElementById("status");
       var logBtnEl = document.getElementById("logBtn");
+      var resetBtnEl = document.getElementById("resetBtn");
       var sinceValueEl = document.getElementById("sinceValue");
       var lastRunLabelEl = document.getElementById("lastRunLabel");
       var historyEl = document.getElementById("history");
@@ -236,12 +239,21 @@
         contentEl.hidden = true;
       }
 
-      function formatDuration(ms) {
-        var totalSeconds = Math.max(0, Math.floor(ms / 1000));
-        var days = Math.floor(totalSeconds / 86400);
-        var hours = Math.floor((totalSeconds % 86400) / 3600);
-        var minutes = Math.floor((totalSeconds % 3600) / 60);
-        var seconds = totalSeconds % 60;
+      function formatDuration(ms, showMillis) {
+        var totalMs = Math.max(0, ms);
+        var days = Math.floor(totalMs / 86400000);
+        var hours = Math.floor((totalMs % 86400000) / 3600000);
+        var minutes = Math.floor((totalMs % 3600000) / 60000);
+        var seconds = Math.floor((totalMs % 60000) / 1000);
+        var millis = Math.floor(totalMs % 1000);
+
+        if (showMillis) {
+          var secStr = seconds + "." + String(millis).padStart(3, "0") + "s";
+          if (days > 0) return days + "d " + hours + "h " + minutes + "m " + secStr;
+          if (hours > 0) return hours + "h " + minutes + "m " + secStr;
+          if (minutes > 0) return minutes + "m " + secStr;
+          return secStr;
+        }
 
         if (days > 0) return days + "d " + hours + "h";
         if (hours > 0) return hours + "h " + minutes + "m";
@@ -267,7 +279,7 @@
           return;
         }
         var lastTs = events[0].timestamp;
-        sinceValueEl.textContent = formatDuration(Date.now() - lastTs);
+        sinceValueEl.textContent = formatDuration(Date.now() - lastTs, true);
         lastRunLabelEl.textContent = "Last ran " + formatTimestamp(lastTs);
       }
 
@@ -309,7 +321,7 @@
 
       function startTicking() {
         if (tickTimer) clearInterval(tickTimer);
-        tickTimer = setInterval(renderSince, 1000);
+        tickTimer = setInterval(renderSince, 47);
       }
 
       function loadData() {
@@ -396,8 +408,52 @@
           });
       }
 
+      function resetCounter() {
+        var secret = getSecret();
+        if (!secret) return;
+        if (!events.length) return;
+
+        var confirmed = window.confirm(
+          "Delete all " + events.length + " logged run(s)? This can't be undone."
+        );
+        if (!confirmed) return;
+
+        resetBtnEl.disabled = true;
+        showStatus("Resetting...", false);
+
+        fetch("/api/sump-pump-data?all=1", {
+          method: "DELETE",
+          headers: { "X-AI-Assist-Secret": secret },
+        })
+          .then(function (response) {
+            return response.text().then(function (rawText) {
+              return { status: response.status, ok: response.ok, rawText: rawText };
+            });
+          })
+          .then(function (result) {
+            resetBtnEl.disabled = false;
+            if (result.status === 401) {
+              localStorage.removeItem(SECRET_KEY);
+              showGate();
+              return;
+            }
+            if (!result.ok) {
+              showStatus("Could not reset the counter.", true);
+              return;
+            }
+            events = [];
+            clearStatus();
+            renderAll();
+          })
+          .catch(function () {
+            resetBtnEl.disabled = false;
+            showStatus("Network error. Try again.", true);
+          });
+      }
+
       unlockBtnEl.addEventListener("click", loadData);
       logBtnEl.addEventListener("click", logRun);
+      resetBtnEl.addEventListener("click", resetCounter);
 
       if (localStorage.getItem(SECRET_KEY)) {
         loadData();

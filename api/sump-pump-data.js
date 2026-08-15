@@ -51,6 +51,16 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === "DELETE") {
+      const clearAll = req.query?.all === "1" || req.query?.all === "true";
+      if (clearAll) {
+        const { blobs } = await list({ prefix: PREFIX });
+        if (blobs.length) {
+          await del(blobs.map((blob) => blob.pathname));
+        }
+        res.status(200).json({ ok: true, deleted: blobs.length });
+        return;
+      }
+
       const id = req.query?.id;
       if (!id) {
         res.status(400).json({ error: "id is required" });

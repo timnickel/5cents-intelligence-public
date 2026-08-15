@@ -4,6 +4,10 @@ All notable changes to this repository should be recorded in this file.
 
 ## [Unreleased]
 
+### 2026.08.15.2.0
+- `/sump-pump`'s "time since last run" counter now shows millisecond precision and ticks ~20x/sec instead of once a second.
+- Added a "Reset counter" button to `/sump-pump` that clears all logged runs (confirm dialog, then a bulk `DELETE ?all=1` against `api/sump-pump-data.js`).
+
 ### 2026.08.15.1.0
 - Added `/sump-pump`, a passphrase-gated page to log sump pump runs: a live "time since last run" counter, a log button, and a history list showing each run's timestamp and the gap since the previous one.
 - Added `api/sump-pump-data.js` (GET/POST/DELETE, same `AI_ASSIST_SECRET` header auth as `api/ai-assist-bot-store.js`), storing one Vercel Blob per run under `sump-pump/*.json`.
