@@ -8,7 +8,6 @@ It is intentionally separate from the admin portal codebase so public branding/s
 ## What Is Already Implemented
 - One-page teaser at `index.html`
 - Orbit Nickel Minimal mark at `logo.svg`
-- Secondary sunrise-only page at `sunrise.html` using `sunrise.png`, also served at `/tree`
 - Private passcode-gated page at `investments.html`, served at `/investments`, backed by two serverless functions (`api/investments-auth.js`, `api/investments-content.js`) that verify a passcode server-side and gate content behind a signed session cookie. Requires `INVESTMENTS_PASSCODE` and `INVESTMENTS_SESSION_SECRET` environment variables set on the Vercel project — see `.env.example`.
 - Vercel static config at `vercel.json`
 - Base project README
@@ -16,7 +15,6 @@ It is intentionally separate from the admin portal codebase so public branding/s
 
 ## Current Navigation Behavior
 - Main page: `index.html`
-- Sunrise page intentionally contains only the image, no text, reachable via `/tree`
 
 ## Local Test Notes
 Recommended local serve command from this repo root:
@@ -25,8 +23,6 @@ Recommended local serve command from this repo root:
 
 Expected local URLs:
 - `http://localhost:4173/`
-- `http://localhost:4173/sunrise.html`
-- `http://localhost:4173/tree` (rewrites to `sunrise.html` on Vercel)
 
 ## Deployment Plan (Vercel)
 1. Import this repository into Vercel.
@@ -50,7 +46,6 @@ Set GoDaddy DNS records:
 2. Open `https://5cents-intelligence.com`.
 3. Open `https://www.5cents-intelligence.com`.
 4. Confirm both routes load over HTTPS.
-5. Confirm rose click opens the sunrise-only page.
 
 ## Notes for Future Focused Work
 - This repository is now the single source of truth for the public site.
