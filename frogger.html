@@ -456,6 +456,113 @@
         font-size: 0.76rem;
         text-align: center;
       }
+
+      /* Export modal */
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(2, 6, 23, 0.72);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        z-index: 1000;
+      }
+
+      .modal-backdrop[hidden] {
+        display: none !important;
+      }
+
+      .modal-card {
+        width: 100%;
+        max-width: 460px;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: linear-gradient(180deg, rgba(10, 18, 32, 0.98), rgba(8, 16, 29, 0.96));
+        box-shadow: 0 30px 90px rgba(2, 6, 23, 0.6);
+        padding: 28px;
+      }
+
+      .modal-card h2 {
+        margin: 0 0 8px;
+        text-align: center;
+      }
+
+      .modal-card > p {
+        margin: 0;
+        color: #cbd5e1;
+        font-size: 0.85rem;
+        line-height: 1.5;
+        text-align: center;
+      }
+
+      .export-checkboxes {
+        display: flex;
+        gap: 18px;
+        margin-top: 18px;
+      }
+
+      .export-checkboxes label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85rem;
+        color: var(--text);
+        cursor: pointer;
+      }
+
+      .export-field {
+        margin-top: 16px;
+      }
+
+      .export-field label {
+        display: block;
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .export-field select,
+      .export-field textarea {
+        width: 100%;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: rgba(6, 12, 22, 0.7);
+        color: var(--text);
+        font-size: 0.9rem;
+        font-family: inherit;
+      }
+
+      .export-field textarea {
+        min-height: 4.5rem;
+        resize: vertical;
+      }
+
+      #exportStatus {
+        margin-top: 14px;
+        font-size: 0.82rem;
+        color: var(--muted);
+        white-space: pre-wrap;
+      }
+
+      #exportStatus:empty {
+        display: none;
+      }
+
+      #exportStatus.error {
+        color: var(--red);
+      }
+
+      .modal-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .modal-actions button {
+        flex: 1;
+      }
     </style>
   </head>
   <body>
@@ -520,8 +627,13 @@
         </div>
 
         <div class="card">
-          <h2>All saved threads</h2>
-          <p class="section-blurb">Click a row to expand the full transcript.</p>
+          <div class="spotlight-row">
+            <div>
+              <h2>All saved threads</h2>
+              <p class="section-blurb" style="margin-bottom: 0">Click a row to expand the full transcript.</p>
+            </div>
+            <button id="openExportBtn" class="secondary">Export all</button>
+          </div>
           <table>
             <thead>
               <tr>
@@ -536,9 +648,41 @@
         </div>
       </div>
 
-      <p class="page-version">v2026.08.12.1.0</p>
+      <p class="page-version">v2026.08.14.1.0</p>
     </main>
     <div id="tooltip" hidden></div>
+    <div id="exportModal" class="modal-backdrop" hidden>
+      <div class="modal-card">
+        <h2>Export all saved threads</h2>
+        <p>Applies to every thread currently loaded. Leave the formatting field blank for a clean default layout.</p>
+        <div class="export-checkboxes">
+          <label><input type="checkbox" id="exportIncludeMemory" checked /> Memory summaries</label>
+          <label><input type="checkbox" id="exportIncludeTranscript" checked /> Full transcripts</label>
+        </div>
+        <div class="export-field">
+          <label for="exportInstructions">Describe the formatting (optional)</label>
+          <textarea
+            id="exportInstructions"
+            placeholder="e.g. One section per bot, chronological, markdown headings"
+            maxlength="500"
+          ></textarea>
+        </div>
+        <div class="export-field">
+          <label for="exportFileType">File type</label>
+          <select id="exportFileType">
+            <option value="txt">Plain text (.txt)</option>
+            <option value="md">Markdown (.md)</option>
+            <option value="json">JSON (.json)</option>
+            <option value="csv">CSV (.csv)</option>
+          </select>
+        </div>
+        <div id="exportStatus"></div>
+        <div class="modal-actions">
+          <button type="button" id="exportCancel" class="secondary">Cancel</button>
+          <button type="button" id="exportSubmit">Export</button>
+        </div>
+      </div>
+    </div>
     <script>
       var SECRET_KEY = "ai-assist-secret";
       var gateEl = document.getElementById("gate");
@@ -550,6 +694,15 @@
       var rerollBtnEl = document.getElementById("rerollBtn");
       var threadTableBodyEl = document.getElementById("threadTableBody");
       var tooltipEl = document.getElementById("tooltip");
+      var openExportBtnEl = document.getElementById("openExportBtn");
+      var exportModalEl = document.getElementById("exportModal");
+      var exportIncludeMemoryEl = document.getElementById("exportIncludeMemory");
+      var exportIncludeTranscriptEl = document.getElementById("exportIncludeTranscript");
+      var exportInstructionsEl = document.getElementById("exportInstructions");
+      var exportFileTypeEl = document.getElementById("exportFileType");
+      var exportStatusEl = document.getElementById("exportStatus");
+      var exportCancelEl = document.getElementById("exportCancel");
+      var exportSubmitEl = document.getElementById("exportSubmit");
 
       var allThreads = [];
 
@@ -1007,6 +1160,110 @@
         renderSpotlight();
         renderTable(allThreads);
       }
+
+      function triggerFileDownload(content, filename, mimeType) {
+        var blob = new Blob([content], { type: mimeType || "text/plain" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () {
+          URL.revokeObjectURL(url);
+        }, 1000);
+      }
+
+      function openExportModal() {
+        if (allThreads.length === 0) {
+          showStatus("No saved threads to export yet.", true);
+          return;
+        }
+        exportStatusEl.className = "";
+        exportStatusEl.textContent = "";
+        exportSubmitEl.disabled = false;
+        exportSubmitEl.textContent = "Export";
+        exportModalEl.hidden = false;
+      }
+
+      function closeExportModal() {
+        exportModalEl.hidden = true;
+      }
+
+      function submitExport() {
+        var secret = getSecret();
+        if (!secret) return;
+
+        var includeMemory = exportIncludeMemoryEl.checked;
+        var includeTranscript = exportIncludeTranscriptEl.checked;
+        if (!includeMemory && !includeTranscript) {
+          exportStatusEl.className = "error";
+          exportStatusEl.textContent = "Pick at least one of memory summaries or transcripts.";
+          return;
+        }
+
+        var threads = allThreads.map(function (thread) {
+          var out = {
+            id: thread.id,
+            title: thread.title,
+            botName: thread.botName,
+            updatedAt: thread.updatedAt,
+          };
+          if (includeMemory) out.memory = thread.memory || "";
+          if (includeTranscript) out.messages = thread.messages || [];
+          return out;
+        });
+
+        var body = {
+          threads: threads,
+          instructions: exportInstructionsEl.value.trim(),
+          fileType: exportFileTypeEl.value,
+        };
+
+        exportSubmitEl.disabled = true;
+        exportSubmitEl.textContent = "Exporting...";
+        exportStatusEl.className = "";
+        exportStatusEl.textContent = "Formatting export of " + threads.length + " thread(s)...";
+
+        fetch("/api/memory-export", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-AI-Assist-Secret": secret },
+          body: JSON.stringify(body),
+        })
+          .then(function (response) {
+            return response.text().then(function (rawText) {
+              return { ok: response.ok, status: response.status, rawText: rawText };
+            });
+          })
+          .then(function (result) {
+            exportSubmitEl.disabled = false;
+            exportSubmitEl.textContent = "Export";
+            if (!result.ok) {
+              exportStatusEl.className = "error";
+              exportStatusEl.textContent =
+                result.status === 503 ? "Export isn't set up yet." : "Could not build export. Try again.";
+              return;
+            }
+            var data = JSON.parse(result.rawText);
+            triggerFileDownload(data.content, data.filename, data.mimeType);
+            exportStatusEl.className = "";
+            exportStatusEl.textContent = "Downloaded " + data.filename + ".";
+          })
+          .catch(function (error) {
+            exportSubmitEl.disabled = false;
+            exportSubmitEl.textContent = "Export";
+            exportStatusEl.className = "error";
+            exportStatusEl.textContent = "Network error. Try again.";
+          });
+      }
+
+      openExportBtnEl.addEventListener("click", openExportModal);
+      exportCancelEl.addEventListener("click", closeExportModal);
+      exportSubmitEl.addEventListener("click", submitExport);
+      exportModalEl.addEventListener("click", function (e) {
+        if (e.target === exportModalEl) closeExportModal();
+      });
 
       if (localStorage.getItem(SECRET_KEY)) {
         loadData();

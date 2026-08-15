@@ -13,7 +13,8 @@ new gated page, put it here, not in a standalone project.
 - investments.html + api/investments-auth.js + api/investments-content.js: passcode-gated `/investments` page
 - ai-assist.html + api/ai-assist-process.js + api/ai-assist-bot-store.js + robot.png: passphrase-gated `/ai-assist` page (note-to-next-action tool, calls the Anthropic API, saved threads persisted to Vercel Blob)
 - frogger.html + api/frogger-data.js: passphrase-gated `/frogger` page, an experimental read-only stats/charts explorer over the same saved-thread data `/ai-assist` writes to Vercel Blob
-- package.json: dependencies for the serverless functions above (`@anthropic-ai/sdk` for `api/ai-assist-process.js`, `@vercel/blob` for the bot-store and frogger endpoints)
+- api/memory-export.js: shared export endpoint used by both `/ai-assist` (single thread) and `/frogger` (all threads) — formats the caller-selected memory/transcript data as txt, md, json, or csv, optionally per free-text instructions (txt/md only, via the Anthropic API; json/csv are always deterministic)
+- package.json: dependencies for the serverless functions above (`@anthropic-ai/sdk` for `api/ai-assist-process.js` and `api/memory-export.js`, `@vercel/blob` for the bot-store and frogger endpoints)
 - vercel.json: rewrite/header configuration mapping clean URLs (`/tree`, `/investments`, `/ai-assist`) to their HTML files, plus the catch-all that serves index.html for everything else
 
 ## Deploy

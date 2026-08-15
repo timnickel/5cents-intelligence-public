@@ -603,6 +603,79 @@
         color: var(--cyan);
       }
 
+      .modal-card.export-modal {
+        max-width: 460px;
+        text-align: left;
+      }
+
+      .modal-card.export-modal h2 {
+        text-align: center;
+      }
+
+      .modal-card.export-modal > p {
+        text-align: center;
+      }
+
+      .export-checkboxes {
+        display: flex;
+        gap: 18px;
+        margin-top: 18px;
+      }
+
+      .export-checkboxes label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85rem;
+        color: var(--text);
+        cursor: pointer;
+      }
+
+      .export-field {
+        margin-top: 16px;
+      }
+
+      .export-field label {
+        display: block;
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .export-field select,
+      .export-field textarea {
+        width: 100%;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: rgba(6, 12, 22, 0.7);
+        color: var(--text);
+        font-size: 0.9rem;
+        font-family: inherit;
+      }
+
+      .export-field textarea {
+        min-height: 4.5rem;
+        margin-top: 0;
+        resize: vertical;
+      }
+
+      #exportStatus {
+        margin-top: 14px;
+        font-size: 0.82rem;
+        color: var(--muted);
+        white-space: pre-wrap;
+      }
+
+      #exportStatus:empty {
+        display: none;
+        margin: 0;
+      }
+
+      #exportStatus.error {
+        color: var(--red);
+      }
+
       .history-item {
         padding: 12px 14px;
         border-radius: 14px;
@@ -679,8 +752,16 @@
         }
       }
 
+      .memory-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
       .memory-header {
-        margin: 0 0 10px;
+        margin: 0;
         font-size: 0.95rem;
         color: #cbd5e1;
       }
@@ -741,7 +822,10 @@
     <main>
       <div class="layout">
         <div id="memory">
-          <h2 class="memory-header">Memory</h2>
+          <div class="memory-header-row">
+            <h2 class="memory-header">Memory</h2>
+            <button type="button" id="openExportBtn" class="secondary small" title="Export this thread">Export</button>
+          </div>
           <div id="memoryContent" class="empty">No memory yet.</div>
         </div>
         <div class="hero">
@@ -818,7 +902,7 @@
               <p class="preview-caption">A peek a few steps ahead, not just the next one.</p>
             </div>
           </div>
-          <p class="page-version">v2026.08.12.2.0</p>
+          <p class="page-version">v2026.08.14.1.0</p>
         </div>
         <div id="debug">
           <div class="debug-header">
@@ -843,6 +927,38 @@
           <button type="button" id="botNameSave">Save name</button>
         </div>
         <p class="modal-footer">Questions? Email <a href="mailto:tnickel2829@gmail.com">tnickel2829@gmail.com</a></p>
+      </div>
+    </div>
+    <div id="exportModal" class="modal-backdrop" hidden>
+      <div class="modal-card export-modal">
+        <h2>Export this thread</h2>
+        <p>Choose what to include. Leave the formatting field blank for a clean default layout.</p>
+        <div class="export-checkboxes">
+          <label><input type="checkbox" id="exportIncludeMemory" checked /> Memory summary</label>
+          <label><input type="checkbox" id="exportIncludeTranscript" checked /> Full transcript</label>
+        </div>
+        <div class="export-field">
+          <label for="exportInstructions">Describe the formatting (optional)</label>
+          <textarea
+            id="exportInstructions"
+            placeholder="e.g. Bullet list grouped by topic, casual tone, headings for each thing decided"
+            maxlength="500"
+          ></textarea>
+        </div>
+        <div class="export-field">
+          <label for="exportFileType">File type</label>
+          <select id="exportFileType">
+            <option value="txt">Plain text (.txt)</option>
+            <option value="md">Markdown (.md)</option>
+            <option value="json">JSON (.json)</option>
+            <option value="csv">CSV (.csv)</option>
+          </select>
+        </div>
+        <div id="exportStatus"></div>
+        <div class="modal-actions">
+          <button type="button" id="exportCancel" class="secondary">Cancel</button>
+          <button type="button" id="exportSubmit">Export</button>
+        </div>
       </div>
     </div>
     <script>
@@ -880,6 +996,15 @@
       var clearDebugEl = document.getElementById("clearDebug");
       var copyDebugEl = document.getElementById("copyDebug");
       var debugEntries = [];
+      var openExportBtnEl = document.getElementById("openExportBtn");
+      var exportModalEl = document.getElementById("exportModal");
+      var exportIncludeMemoryEl = document.getElementById("exportIncludeMemory");
+      var exportIncludeTranscriptEl = document.getElementById("exportIncludeTranscript");
+      var exportInstructionsEl = document.getElementById("exportInstructions");
+      var exportFileTypeEl = document.getElementById("exportFileType");
+      var exportStatusEl = document.getElementById("exportStatus");
+      var exportCancelEl = document.getElementById("exportCancel");
+      var exportSubmitEl = document.getElementById("exportSubmit");
       var conversation = [];
       var currentThreadId = null;
       var currentMemory = "";
@@ -1323,6 +1448,113 @@
           memoryContentEl.className = "empty";
         }
       }
+
+      function triggerFileDownload(content, filename, mimeType) {
+        var blob = new Blob([content], { type: mimeType || "text/plain" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () {
+          URL.revokeObjectURL(url);
+        }, 1000);
+      }
+
+      function openExportModal() {
+        if (!currentThreadId || conversation.length === 0) {
+          statusEl.className = "error";
+          statusEl.textContent = "Start a conversation before exporting.";
+          return;
+        }
+        exportStatusEl.className = "";
+        exportStatusEl.textContent = "";
+        exportSubmitEl.disabled = false;
+        exportSubmitEl.textContent = "Export";
+        exportModalEl.hidden = false;
+      }
+
+      function closeExportModal() {
+        exportModalEl.hidden = true;
+      }
+
+      function submitExport() {
+        var secret = getSecret();
+        if (!secret) return;
+
+        var includeMemory = exportIncludeMemoryEl.checked;
+        var includeTranscript = exportIncludeTranscriptEl.checked;
+        if (!includeMemory && !includeTranscript) {
+          exportStatusEl.className = "error";
+          exportStatusEl.textContent = "Pick at least one of memory summary or transcript.";
+          return;
+        }
+
+        var thread = {
+          id: currentThreadId,
+          title: makeTitle(conversation[0].content),
+          botName: getBotName(),
+          updatedAt: Date.now(),
+        };
+        if (includeMemory) thread.memory = currentMemory || "";
+        if (includeTranscript) thread.messages = conversation.slice();
+
+        var body = {
+          threads: [thread],
+          instructions: exportInstructionsEl.value.trim(),
+          fileType: exportFileTypeEl.value,
+        };
+
+        exportSubmitEl.disabled = true;
+        exportSubmitEl.textContent = "Exporting...";
+        exportStatusEl.className = "";
+        exportStatusEl.textContent = "Formatting export...";
+
+        var requestHeaders = { "Content-Type": "application/json", "X-AI-Assist-Secret": secret };
+        logDebug("Request → POST /api/memory-export", { headers: requestHeaders, body: body });
+
+        fetch("/api/memory-export", {
+          method: "POST",
+          headers: requestHeaders,
+          body: JSON.stringify(body),
+        })
+          .then(function (response) {
+            return response.text().then(function (rawText) {
+              logDebug("Response ← " + response.status + " " + response.statusText, rawText);
+              return { ok: response.ok, status: response.status, rawText: rawText };
+            });
+          })
+          .then(function (result) {
+            exportSubmitEl.disabled = false;
+            exportSubmitEl.textContent = "Export";
+            if (!result.ok) {
+              exportStatusEl.className = "error";
+              exportStatusEl.textContent =
+                result.status === 503 ? "Export isn't set up yet." : "Could not build export. Try again.";
+              return;
+            }
+            var data = JSON.parse(result.rawText);
+            triggerFileDownload(data.content, data.filename, data.mimeType);
+            exportStatusEl.className = "";
+            exportStatusEl.textContent = "Downloaded " + data.filename + ".";
+          })
+          .catch(function (error) {
+            logDebug("Error", error && error.message ? error.message : String(error));
+            exportSubmitEl.disabled = false;
+            exportSubmitEl.textContent = "Export";
+            exportStatusEl.className = "error";
+            exportStatusEl.textContent = "Network error. Try again.";
+          });
+      }
+
+      openExportBtnEl.addEventListener("click", openExportModal);
+      exportCancelEl.addEventListener("click", closeExportModal);
+      exportSubmitEl.addEventListener("click", submitExport);
+      exportModalEl.addEventListener("click", function (e) {
+        if (e.target === exportModalEl) closeExportModal();
+      });
 
       function promptForSecret() {
         var value = window.prompt("Enter your AI Assist passphrase:");
