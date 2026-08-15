@@ -387,6 +387,13 @@
         return seconds + "s";
       }
 
+      function formatHoursAsClock(hoursDecimal) {
+        var totalMinutes = Math.round(hoursDecimal * 60);
+        var h = Math.floor(totalMinutes / 60);
+        var m = totalMinutes % 60;
+        return h + ":" + String(m).padStart(2, "0");
+      }
+
       function formatTimestamp(ts) {
         var d = new Date(ts);
         return d.toLocaleString(undefined, {
@@ -523,7 +530,7 @@
 
         var width = 600;
         var height = 150;
-        var padLeft = 30;
+        var padLeft = 36;
         var padRight = 10;
         var padTop = 12;
         var padBottom = 20;
@@ -661,7 +668,7 @@
           emptyMessage: "Log at least two runs to see this trend.",
           color: "var(--series)",
           ariaLabel: "Time between runs trend",
-          formatAxis: function (v) { return Math.round(v) + "h"; },
+          formatAxis: function (v) { return formatHoursAsClock(v); },
           formatValue: function (v) { return formatDuration(v * 3600000); },
         });
 

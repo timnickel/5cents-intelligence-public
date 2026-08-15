@@ -4,6 +4,9 @@ All notable changes to this repository should be recorded in this file.
 
 ## [Unreleased]
 
+### 2026.08.15.5.0
+- Fixed `/sump-pump`'s "Time between runs" chart gridline labels: whole-hour rounding (`Math.round(v) + "h"`) collapsed short intervals to misleading repeats like "0h, 0h, 1h"; gridlines now show `h:mm` (e.g. "0:15", "3:45") so sub-hour trends stay readable.
+
 ### 2026.08.15.4.0
 - Each `/sump-pump` history row now has a "Mark as duration" toggle (`PATCH` against `api/sump-pump-data.js`, setting `isDuration` on that run) to flag whether it records the pump *stopping* after a run (its duration) rather than a fresh run starting after idle time.
 - Replaced the single "hours between runs" bar chart with two separate trend line charts — "Time between runs" and "Run duration" — since the two measures are on very different scales (hours vs. minutes) and don't belong on one axis. Each classifies every gap by whether the newer run in the pair was marked "duration."
