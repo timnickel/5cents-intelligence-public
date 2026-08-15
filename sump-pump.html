@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Sump Pump Log · 5 Cents Intelligence</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #06101d;
+        --panel: rgba(9, 18, 33, 0.76);
+        --text: #f8fafc;
+        --muted: #94a3b8;
+        --line: rgba(148, 163, 184, 0.14);
+        --cyan: #7dd3fc;
+        --green: #34d399;
+        --red: #f87171;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", Arial, sans-serif;
+        background:
+          radial-gradient(circle at 20% 10%, rgba(56, 189, 248, 0.14), transparent 24%),
+          radial-gradient(circle at 80% 30%, rgba(52, 211, 153, 0.08), transparent 30%),
+          linear-gradient(180deg, #06101d 0%, #081425 44%, #0d1728 100%);
+        color: var(--text);
+      }
+
+      main {
+        width: min(680px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 32px 0 48px;
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: linear-gradient(180deg, rgba(10, 18, 32, 0.9), rgba(8, 16, 29, 0.76));
+        box-shadow: 0 30px 90px rgba(2, 6, 23, 0.32);
+        padding: 28px;
+        margin-bottom: 20px;
+      }
+
+      .eyebrow {
+        color: var(--cyan);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        margin: 0 0 4px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.5rem, 3.5vw, 1.9rem);
+        letter-spacing: -0.02em;
+      }
+
+      .since {
+        margin-top: 18px;
+        font-size: 2.4rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+
+      .since-label {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      button {
+        appearance: none;
+        border: none;
+        border-radius: 14px;
+        background: linear-gradient(180deg, #38bdf8, #0ea5e9);
+        color: #04121f;
+        font-weight: 700;
+        font-size: 1.05rem;
+        padding: 16px 24px;
+        width: 100%;
+        margin-top: 22px;
+        cursor: pointer;
+        box-shadow: 0 12px 30px rgba(14, 165, 233, 0.28);
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+
+      button.secondary {
+        background: transparent;
+        border: 1px solid var(--line);
+        color: var(--muted);
+        box-shadow: none;
+        font-size: 0.85rem;
+        font-weight: 600;
+        padding: 8px 14px;
+        width: auto;
+        margin-top: 0;
+      }
+
+      #status {
+        margin-top: 14px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      #status.error {
+        color: var(--red);
+      }
+
+      h2 {
+        margin: 0 0 14px;
+        font-size: 1.05rem;
+        color: #e2e8f0;
+      }
+
+      ul#history {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      #history li {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      #history li:last-child {
+        border-bottom: none;
+      }
+
+      .event-time {
+        color: var(--text);
+        font-size: 0.92rem;
+      }
+
+      .event-gap {
+        color: var(--muted);
+        font-size: 0.82rem;
+        white-space: nowrap;
+      }
+
+      .empty {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      #gate {
+        text-align: center;
+      }
+
+      #gate button {
+        max-width: 220px;
+        margin: 18px auto 0;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="card" id="gate">
+        <div class="eyebrow">Private tool</div>
+        <h1>Sump Pump Log</h1>
+        <p class="since-label" style="margin-top: 12px;">Enter your passphrase to unlock.</p>
+        <button type="button" id="unlockBtn">Unlock</button>
+      </div>
+
+      <div id="content" hidden>
+        <div class="card">
+          <div class="eyebrow">Sump Pump Log</div>
+          <h1>Time since last run</h1>
+          <div class="since" id="sinceValue">&mdash;</div>
+          <div class="since-label" id="lastRunLabel"></div>
+          <button type="button" id="logBtn">Log a run now</button>
+          <div id="status" hidden></div>
+        </div>
+
+        <div class="card">
+          <h2>History</h2>
+          <ul id="history"></ul>
+        </div>
+      </div>
+    </main>
+    <script>
+      var SECRET_KEY = "ai-assist-secret";
+      var gateEl = document.getElementById("gate");
+      var unlockBtnEl = document.getElementById("unlockBtn");
+      var contentEl = document.getElementById("content");
+      var statusEl = document.getElementById("status");
+      var logBtnEl = document.getElementById("logBtn");
+      var sinceValueEl = document.getElementById("sinceValue");
+      var lastRunLabelEl = document.getElementById("lastRunLabel");
+      var historyEl = document.getElementById("history");
+
+      var events = [];
+      var tickTimer = null;
+
+      function getSecret() {
+        var secret = localStorage.getItem(SECRET_KEY);
+        if (!secret) {
+          secret = window.prompt("Enter your passphrase:");
+          if (secret) localStorage.setItem(SECRET_KEY, secret);
+        }
+        return secret;
+      }
+
+      function showStatus(message, isError) {
+        statusEl.hidden = false;
+        statusEl.className = isError ? "error" : "";
+        statusEl.textContent = message;
+      }
+
+      function clearStatus() {
+        statusEl.hidden = true;
+      }
+
+      function showGate() {
+        gateEl.hidden = false;
+        contentEl.hidden = true;
+      }
+
+      function formatDuration(ms) {
+        var totalSeconds = Math.max(0, Math.floor(ms / 1000));
+        var days = Math.floor(totalSeconds / 86400);
+        var hours = Math.floor((totalSeconds % 86400) / 3600);
+        var minutes = Math.floor((totalSeconds % 3600) / 60);
+        var seconds = totalSeconds % 60;
+
+        if (days > 0) return days + "d " + hours + "h";
+        if (hours > 0) return hours + "h " + minutes + "m";
+        if (minutes > 0) return minutes + "m " + seconds + "s";
+        return seconds + "s";
+      }
+
+      function formatTimestamp(ts) {
+        var d = new Date(ts);
+        return d.toLocaleString(undefined, {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        });
+      }
+
+      function renderSince() {
+        if (!events.length) {
+          sinceValueEl.textContent = "No runs yet";
+          lastRunLabelEl.textContent = "";
+          return;
+        }
+        var lastTs = events[0].timestamp;
+        sinceValueEl.textContent = formatDuration(Date.now() - lastTs);
+        lastRunLabelEl.textContent = "Last ran " + formatTimestamp(lastTs);
+      }
+
+      function renderHistory() {
+        historyEl.innerHTML = "";
+        if (!events.length) {
+          var empty = document.createElement("li");
+          empty.className = "empty";
+          empty.textContent = "No runs logged yet.";
+          historyEl.appendChild(empty);
+          return;
+        }
+        for (var i = 0; i < events.length; i++) {
+          var li = document.createElement("li");
+
+          var timeSpan = document.createElement("span");
+          timeSpan.className = "event-time";
+          timeSpan.textContent = formatTimestamp(events[i].timestamp);
+          li.appendChild(timeSpan);
+
+          var gapSpan = document.createElement("span");
+          gapSpan.className = "event-gap";
+          if (i < events.length - 1) {
+            var gapMs = events[i].timestamp - events[i + 1].timestamp;
+            gapSpan.textContent = formatDuration(gapMs) + " since previous";
+          } else {
+            gapSpan.textContent = "first logged run";
+          }
+          li.appendChild(gapSpan);
+
+          historyEl.appendChild(li);
+        }
+      }
+
+      function renderAll() {
+        renderSince();
+        renderHistory();
+      }
+
+      function startTicking() {
+        if (tickTimer) clearInterval(tickTimer);
+        tickTimer = setInterval(renderSince, 1000);
+      }
+
+      function loadData() {
+        var secret = getSecret();
+        if (!secret) return;
+
+        gateEl.hidden = true;
+        contentEl.hidden = false;
+        showStatus("Loading history...", false);
+
+        fetch("/api/sump-pump-data", { headers: { "X-AI-Assist-Secret": secret } })
+          .then(function (response) {
+            return response.text().then(function (rawText) {
+              return { status: response.status, ok: response.ok, rawText: rawText };
+            });
+          })
+          .then(function (result) {
+            if (result.status === 401) {
+              localStorage.removeItem(SECRET_KEY);
+              showGate();
+              showStatus("");
+              return;
+            }
+            if (result.status === 503) {
+              showStatus("Blob storage isn't configured on this deployment yet.", true);
+              return;
+            }
+            if (!result.ok) {
+              showStatus("Could not load history.", true);
+              return;
+            }
+            var data;
+            try {
+              data = result.rawText ? JSON.parse(result.rawText) : [];
+            } catch (e) {
+              showStatus("Received an invalid response from the server.", true);
+              return;
+            }
+            events = Array.isArray(data) ? data : [];
+            clearStatus();
+            renderAll();
+            startTicking();
+          })
+          .catch(function () {
+            showStatus("Network error. Try again.", true);
+          });
+      }
+
+      function logRun() {
+        var secret = getSecret();
+        if (!secret) return;
+
+        logBtnEl.disabled = true;
+        showStatus("Logging...", false);
+
+        fetch("/api/sump-pump-data", {
+          method: "POST",
+          headers: { "X-AI-Assist-Secret": secret },
+        })
+          .then(function (response) {
+            return response.text().then(function (rawText) {
+              return { status: response.status, ok: response.ok, rawText: rawText };
+            });
+          })
+          .then(function (result) {
+            logBtnEl.disabled = false;
+            if (result.status === 401) {
+              localStorage.removeItem(SECRET_KEY);
+              showGate();
+              return;
+            }
+            if (!result.ok) {
+              showStatus("Could not log the run.", true);
+              return;
+            }
+            var event = JSON.parse(result.rawText);
+            events.unshift(event);
+            clearStatus();
+            renderAll();
+          })
+          .catch(function () {
+            logBtnEl.disabled = false;
+            showStatus("Network error. Try again.", true);
+          });
+      }
+
+      unlockBtnEl.addEventListener("click", loadData);
+      logBtnEl.addEventListener("click", logRun);
+
+      if (localStorage.getItem(SECRET_KEY)) {
+        loadData();
+      }
+    </script>
+  </body>
+</html>

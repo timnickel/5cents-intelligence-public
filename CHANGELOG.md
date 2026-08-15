@@ -4,6 +4,10 @@ All notable changes to this repository should be recorded in this file.
 
 ## [Unreleased]
 
+### 2026.08.15.1.0
+- Added `/sump-pump`, a passphrase-gated page to log sump pump runs: a live "time since last run" counter, a log button, and a history list showing each run's timestamp and the gap since the previous one.
+- Added `api/sump-pump-data.js` (GET/POST/DELETE, same `AI_ASSIST_SECRET` header auth as `api/ai-assist-bot-store.js`), storing one Vercel Blob per run under `sump-pump/*.json`.
+
 ### 2026.08.14.2.0
 - `/ai-assist`'s local "Threads" list now shows only the 3 most recently updated threads by default, with a "Show N more" / "Show less" toggle to reveal the rest — "Saved to bot" is unaffected.
 
