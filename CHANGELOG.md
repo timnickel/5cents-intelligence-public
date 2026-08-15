@@ -4,6 +4,10 @@ All notable changes to this repository should be recorded in this file.
 
 ## [Unreleased]
 
+### 2026.08.15.3.0
+- `/sump-pump` history rows now have a Delete button (per-row `DELETE ?id=` against `api/sump-pump-data.js`, with a confirm dialog) so individual mis-logged runs can be removed.
+- Added a "Trend · hours between runs" bar chart to `/sump-pump` (reuses the bar-chart/tooltip component from `/frogger`), plotting the gap before each run in chronological order; the first-ever run has no prior run to measure from, so it's skipped rather than plotted as a fabricated zero.
+
 ### 2026.08.15.2.0
 - `/sump-pump`'s "time since last run" counter now shows millisecond precision and ticks ~20x/sec instead of once a second.
 - Added a "Reset counter" button to `/sump-pump` that clears all logged runs (confirm dialog, then a bulk `DELETE ?all=1` against `api/sump-pump-data.js`).

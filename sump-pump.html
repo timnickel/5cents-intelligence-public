@@ -16,6 +16,7 @@
         --cyan: #7dd3fc;
         --green: #34d399;
         --red: #f87171;
+        --series: #3987e5;
       }
 
       * {
@@ -134,7 +135,7 @@
       #history li {
         display: flex;
         justify-content: space-between;
-        align-items: baseline;
+        align-items: center;
         gap: 12px;
         padding: 10px 0;
         border-bottom: 1px solid var(--line);
@@ -155,9 +156,149 @@
         white-space: nowrap;
       }
 
+      .event-main {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .event-delete {
+        appearance: none;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: transparent;
+        color: var(--muted);
+        width: auto;
+        margin: 0;
+        padding: 4px 9px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        box-shadow: none;
+        flex: none;
+      }
+
+      .event-delete:hover {
+        color: var(--red);
+        border-color: var(--red);
+      }
+
       .empty {
         color: var(--muted);
         font-size: 0.9rem;
+      }
+
+      /* Trend chart */
+      .chart-plot {
+        position: relative;
+        height: 140px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .chart-gridline {
+        position: absolute;
+        left: 0;
+        right: 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .chart-gridline-label {
+        position: absolute;
+        left: 0;
+        transform: translateY(-100%);
+        font-size: 0.66rem;
+        color: var(--muted);
+        padding-bottom: 2px;
+      }
+
+      .chart-bars {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: flex-end;
+        gap: 2px;
+        padding-left: 2px;
+      }
+
+      .chart-bar-col {
+        flex: 1 1 0;
+        min-width: 4px;
+        max-width: 26px;
+        height: 100%;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        position: relative;
+        outline: none;
+      }
+
+      .chart-bar {
+        width: 100%;
+        max-width: 22px;
+        background: var(--series);
+        border-radius: 4px 4px 0 0;
+        min-height: 2px;
+        transition: filter 0.1s ease;
+      }
+
+      .chart-bar-col:hover .chart-bar,
+      .chart-bar-col:focus-visible .chart-bar {
+        filter: brightness(1.35);
+      }
+
+      .chart-bar-col:focus-visible {
+        box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.6);
+        border-radius: 4px;
+      }
+
+      .chart-x-labels {
+        display: flex;
+        gap: 2px;
+        margin-top: 6px;
+        padding-left: 2px;
+      }
+
+      .chart-x-label {
+        flex: 1 1 0;
+        min-width: 4px;
+        max-width: 26px;
+        font-size: 0.62rem;
+        color: var(--muted);
+        text-align: center;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .chart-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 140px;
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+
+      #tooltip {
+        position: fixed;
+        z-index: 1000;
+        pointer-events: none;
+        background: #0b1626;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 6px 10px;
+        font-size: 0.76rem;
+        box-shadow: 0 12px 30px rgba(2, 6, 23, 0.5);
+        transform: translate(-50%, -100%);
+        white-space: nowrap;
+      }
+
+      #tooltip .tt-value {
+        color: var(--text);
+        font-weight: 700;
+      }
+
+      #tooltip .tt-label {
+        color: var(--muted);
+        margin-top: 2px;
       }
 
       #gate {
@@ -195,11 +336,17 @@
         </div>
 
         <div class="card">
+          <h2>Trend &middot; hours between runs</h2>
+          <div id="trendChart"></div>
+        </div>
+
+        <div class="card">
           <h2>History</h2>
           <ul id="history"></ul>
         </div>
       </div>
     </main>
+    <div id="tooltip" hidden></div>
     <script>
       var SECRET_KEY = "ai-assist-secret";
       var gateEl = document.getElementById("gate");
@@ -211,6 +358,7 @@
       var sinceValueEl = document.getElementById("sinceValue");
       var lastRunLabelEl = document.getElementById("lastRunLabel");
       var historyEl = document.getElementById("history");
+      var tooltipEl = document.getElementById("tooltip");
 
       var events = [];
       var tickTimer = null;
@@ -295,10 +443,13 @@
         for (var i = 0; i < events.length; i++) {
           var li = document.createElement("li");
 
+          var mainDiv = document.createElement("div");
+          mainDiv.className = "event-main";
+
           var timeSpan = document.createElement("span");
           timeSpan.className = "event-time";
           timeSpan.textContent = formatTimestamp(events[i].timestamp);
-          li.appendChild(timeSpan);
+          mainDiv.appendChild(timeSpan);
 
           var gapSpan = document.createElement("span");
           gapSpan.className = "event-gap";
@@ -308,15 +459,153 @@
           } else {
             gapSpan.textContent = "first logged run";
           }
-          li.appendChild(gapSpan);
+          mainDiv.appendChild(gapSpan);
+
+          li.appendChild(mainDiv);
+
+          var deleteBtn = document.createElement("button");
+          deleteBtn.type = "button";
+          deleteBtn.className = "event-delete";
+          deleteBtn.textContent = "Delete";
+          deleteBtn.addEventListener("click", (function (event) {
+            return function () {
+              deleteEvent(event);
+            };
+          })(events[i]));
+          li.appendChild(deleteBtn);
 
           historyEl.appendChild(li);
         }
       }
 
+      // ---------- trend chart ----------
+
+      function niceMax(value) {
+        if (value <= 0) return 1;
+        var magnitude = Math.pow(10, Math.floor(Math.log10(value)));
+        var normalized = value / magnitude;
+        var step = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+        return step * magnitude;
+      }
+
+      function showTooltip(targetEl, labelText, valueText) {
+        var rect = targetEl.getBoundingClientRect();
+        tooltipEl.innerHTML = "";
+        var valueDiv = document.createElement("div");
+        valueDiv.className = "tt-value";
+        valueDiv.textContent = valueText;
+        var labelDiv = document.createElement("div");
+        labelDiv.className = "tt-label";
+        labelDiv.textContent = labelText;
+        tooltipEl.appendChild(valueDiv);
+        tooltipEl.appendChild(labelDiv);
+        tooltipEl.style.left = rect.left + rect.width / 2 + "px";
+        tooltipEl.style.top = rect.top - 6 + "px";
+        tooltipEl.hidden = false;
+      }
+
+      function hideTooltip() {
+        tooltipEl.hidden = true;
+      }
+
+      function renderBarChart(containerEl, bars, opts) {
+        opts = opts || {};
+        containerEl.innerHTML = "";
+        if (!bars.length) {
+          var empty = document.createElement("div");
+          empty.className = "chart-empty";
+          empty.textContent = opts.emptyMessage || "No data yet.";
+          containerEl.appendChild(empty);
+          return;
+        }
+
+        var maxValue = niceMax(Math.max.apply(null, bars.map(function (b) { return b.value; })));
+        var gridSuffix = opts.gridlineSuffix || "";
+
+        var plot = document.createElement("div");
+        plot.className = "chart-plot";
+
+        [0, 0.5, 1].forEach(function (fraction) {
+          var line = document.createElement("div");
+          line.className = "chart-gridline";
+          line.style.bottom = fraction * 100 + "%";
+          var lbl = document.createElement("span");
+          lbl.className = "chart-gridline-label";
+          lbl.textContent = Math.round(maxValue * fraction) + gridSuffix;
+          line.appendChild(lbl);
+          plot.appendChild(line);
+        });
+
+        var barsRow = document.createElement("div");
+        barsRow.className = "chart-bars";
+
+        bars.forEach(function (bar) {
+          var col = document.createElement("div");
+          col.className = "chart-bar-col";
+          col.tabIndex = 0;
+
+          var heightPct = maxValue > 0 ? Math.max((bar.value / maxValue) * 100, bar.value > 0 ? 2 : 0) : 0;
+          var barEl = document.createElement("div");
+          barEl.className = "chart-bar";
+          barEl.style.height = heightPct + "%";
+          col.appendChild(barEl);
+
+          var tooltipLabel = bar.tooltipLabel || bar.label;
+          var tooltipValue = opts.formatValue ? opts.formatValue(bar.value) : String(bar.value);
+          col.addEventListener("pointerenter", function () {
+            showTooltip(barEl, tooltipLabel, tooltipValue);
+          });
+          col.addEventListener("focus", function () {
+            showTooltip(barEl, tooltipLabel, tooltipValue);
+          });
+          col.addEventListener("pointerleave", hideTooltip);
+          col.addEventListener("blur", hideTooltip);
+
+          barsRow.appendChild(col);
+        });
+
+        plot.appendChild(barsRow);
+        containerEl.appendChild(plot);
+
+        var xLabels = document.createElement("div");
+        xLabels.className = "chart-x-labels";
+        bars.forEach(function (bar) {
+          var lbl = document.createElement("span");
+          lbl.className = "chart-x-label";
+          lbl.textContent = bar.label;
+          xLabels.appendChild(lbl);
+        });
+        containerEl.appendChild(xLabels);
+      }
+
+      function renderTrend() {
+        // Oldest-first; a run only has a "since previous" gap once there's an
+        // earlier run to measure from, so the first-ever run is skipped rather
+        // than plotted as a fabricated zero.
+        var chronological = events.slice().sort(function (a, b) { return a.timestamp - b.timestamp; });
+        var bars = [];
+        for (var i = 1; i < chronological.length; i++) {
+          var gapMs = chronological[i].timestamp - chronological[i - 1].timestamp;
+          var d = new Date(chronological[i].timestamp);
+          bars.push({
+            value: gapMs / 3600000,
+            label: d.toLocaleDateString(undefined, { month: "numeric", day: "numeric" }),
+            tooltipLabel: formatTimestamp(chronological[i].timestamp),
+          });
+        }
+        renderBarChart(document.getElementById("trendChart"), bars, {
+          emptyMessage: "Log at least two runs to see a trend.",
+          gridlineSuffix: "h",
+          formatValue: function (value) {
+            return formatDuration(value * 3600000);
+          },
+        });
+      }
+
       function renderAll() {
         renderSince();
         renderHistory();
+        renderTrend();
       }
 
       function startTicking() {
@@ -447,6 +736,43 @@
           })
           .catch(function () {
             resetBtnEl.disabled = false;
+            showStatus("Network error. Try again.", true);
+          });
+      }
+
+      function deleteEvent(event) {
+        var secret = getSecret();
+        if (!secret) return;
+
+        var confirmed = window.confirm("Delete the run logged " + formatTimestamp(event.timestamp) + "?");
+        if (!confirmed) return;
+
+        showStatus("Deleting...", false);
+
+        fetch("/api/sump-pump-data?id=" + encodeURIComponent(event.id), {
+          method: "DELETE",
+          headers: { "X-AI-Assist-Secret": secret },
+        })
+          .then(function (response) {
+            return response.text().then(function (rawText) {
+              return { status: response.status, ok: response.ok, rawText: rawText };
+            });
+          })
+          .then(function (result) {
+            if (result.status === 401) {
+              localStorage.removeItem(SECRET_KEY);
+              showGate();
+              return;
+            }
+            if (!result.ok) {
+              showStatus("Could not delete that run.", true);
+              return;
+            }
+            events = events.filter(function (e) { return e.id !== event.id; });
+            clearStatus();
+            renderAll();
+          })
+          .catch(function () {
             showStatus("Network error. Try again.", true);
           });
       }
